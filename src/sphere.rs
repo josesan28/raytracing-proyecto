@@ -1,18 +1,20 @@
-use crate::material::{Intersect, Material, RayIntersect};
-use crate::math::Vec3;
+use std::f32::consts::PI;
+
+use crate::material::{Intersect, MaterialId, RayIntersect};
+use crate::math::{Vec2, Vec3};
 
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
-    pub material: Material,
+    pub material_id: MaterialId,
 }
 
 impl Sphere {
-    pub const fn new(center: Vec3, radius: f32, material: Material) -> Self {
+    pub const fn new(center: Vec3, radius: f32, material_id: MaterialId) -> Self {
         Self {
             center,
             radius,
-            material,
+            material_id,
         }
     }
 }
@@ -41,8 +43,19 @@ impl RayIntersect for Sphere {
         };
 
         let point = *ray_origin + *ray_direction * distance;
-        let normal = (point - self.center).normalize();
+        let outward_normal = (point - self.center).normalize();
+        let uv = Vec2::new(
+            0.5 + outward_normal.z.atan2(outward_normal.x) / (2.0 * PI),
+            0.5 - outward_normal.y.asin() / PI,
+        );
 
-        Intersect::new(point, normal, distance, self.material)
+        Intersect::new(
+            point,
+            outward_normal,
+            distance,
+            uv,
+            self.material_id,
+            ray_direction,
+        )
     }
 }

@@ -7,6 +7,7 @@ mod output;
 mod renderer;
 mod scene;
 mod sphere;
+mod texture;
 
 use camera::Camera;
 use color::Color;
@@ -30,8 +31,8 @@ fn main() -> std::io::Result<()> {
         Vec3::new(0.0, 1.0, 0.0),
         PI / 3.0,
     );
-    let objects = zbuffer_scene();
-    render(&mut framebuffer, &camera, &objects);
+    let scene = zbuffer_scene();
+    render(&mut framebuffer, &camera, &scene);
 
     write_ppm("zbuffer.ppm", &framebuffer)?;
     println!("Render terminado: zbuffer.ppm");

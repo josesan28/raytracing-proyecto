@@ -37,10 +37,6 @@ impl Framebuffer {
         self.background_color = color;
     }
 
-    pub const fn background_color(&self) -> Color {
-        self.background_color
-    }
-
     pub fn pixels(&self) -> &[Color] {
         &self.color_buffer
     }

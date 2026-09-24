@@ -1,5 +1,18 @@
 use std::ops::{Add, Div, Mul, Sub};
 
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Vec2 {
+    pub u: f32,
+    pub v: f32,
+}
+
+impl Vec2 {
+    pub const fn new(u: f32, v: f32) -> Self {
+        Self { u, v }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Vec3 {
     pub x: f32,
