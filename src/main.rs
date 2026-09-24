@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
         Vec3::new(0.0, 1.0, 0.0),
         PI / 3.0,
     );
-    let scene = temple_scene();
+    let scene = temple_scene()?;
     render(&mut framebuffer, &camera, &scene);
 
     write_ppm("temple_cubes.ppm", &framebuffer)?;

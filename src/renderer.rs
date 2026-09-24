@@ -22,7 +22,15 @@ pub fn trace_ray(ray_origin: &Vec3, ray_direction: &Vec3, scene: &Scene) -> Colo
         return scene.skybox.color;
     }
 
-    scene.materials[intersect.material_id].albedo.to_color()
+    let material = &scene.materials[intersect.material_id];
+    let surface_color = match material.texture_id {
+        Some(texture_id) => material
+            .albedo
+            .modulate(scene.textures[texture_id].sample_nearest(intersect.uv)),
+        None => material.albedo,
+    };
+
+    surface_color.to_color()
 }
 
 pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {

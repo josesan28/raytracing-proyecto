@@ -2,3 +2,6 @@ target/
 *.ppm
 *.bmp
 *.png
+
+# Las texturas PPM son assets del proyecto, no resultados del render.
+!assets/textures/*.ppm

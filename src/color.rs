@@ -30,6 +30,10 @@ impl LinearColor {
             (self.b.clamp(0.0, 1.0) * 255.0).round() as u8,
         )
     }
+
+    pub const fn modulate(self, other: Self) -> Self {
+        Self::new(self.r * other.r, self.g * other.g, self.b * other.b)
+    }
 }
 
 impl From<Color> for LinearColor {

@@ -18,20 +18,44 @@ pub struct Skybox {
 pub struct Scene {
     pub objects: Vec<Box<dyn RayIntersect>>,
     pub materials: Vec<Material>,
-    #[allow(dead_code)]
     pub textures: Vec<Texture>,
     #[allow(dead_code)]
     pub lights: Vec<PointLight>,
     pub skybox: Skybox,
 }
 
-pub fn temple_scene() -> Scene {
-    let materials = vec![
-        Material::new(LinearColor::from(Color::new(112, 119, 104))),
-        Material::new(LinearColor::from(Color::new(82, 104, 76))),
-        Material::new(LinearColor::from(Color::new(91, 76, 58))),
-        Material::new(LinearColor::from(Color::new(190, 143, 48))),
+pub fn temple_scene() -> io::Result<Scene> {
+    let textures = vec![
+        Texture::from_ppm("assets/textures/piedra.ppm")?,
+        Texture::from_ppm("assets/textures/musgo.ppm")?,
+        Texture::from_ppm("assets/textures/madera.ppm")?,
+        Texture::from_ppm("assets/textures/oro.ppm")?,
     ];
+
+    let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
+    stone.texture_id = Some(0);
+    stone.specular = 0.15;
+    stone.shininess = 24.0;
+    stone.reflectivity = 0.05;
+
+    let mut moss = Material::new(LinearColor::new(0.82, 0.94, 0.78));
+    moss.texture_id = Some(1);
+    moss.specular = 0.04;
+    moss.shininess = 8.0;
+
+    let mut wood = Material::new(LinearColor::new(0.92, 0.82, 0.68));
+    wood.texture_id = Some(2);
+    wood.specular = 0.18;
+    wood.shininess = 20.0;
+    wood.reflectivity = 0.04;
+
+    let mut gold = Material::new(LinearColor::new(1.0, 0.90, 0.55));
+    gold.texture_id = Some(3);
+    gold.specular = 0.85;
+    gold.shininess = 96.0;
+    gold.reflectivity = 0.65;
+
+    let materials = vec![stone, moss, wood, gold];
 
     let objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
@@ -127,13 +151,14 @@ pub fn temple_scene() -> Scene {
         )),
     ];
 
-    Scene {
+    Ok(Scene {
         objects,
         materials,
-        textures: Vec::new(),
+        textures,
         lights: Vec::new(),
         skybox: Skybox {
             color: Color::new(20, 27, 38),
         },
-    }
+    })
 }
+use std::io;
