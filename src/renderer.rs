@@ -6,6 +6,7 @@ use crate::math::Vec3;
 use crate::scene::Scene;
 
 const AMBIENT_INTENSITY: f32 = 0.14;
+const MAX_DEPTH: u32 = 3;
 
 fn closest_intersection(
     ray_origin: &Vec3,
@@ -108,14 +109,45 @@ fn shade(intersection: &Intersect, ray_direction: &Vec3, scene: &Scene) -> Linea
     result
 }
 
-pub fn trace_ray(ray_origin: &Vec3, ray_direction: &Vec3, scene: &Scene) -> Color {
+fn trace_ray_linear(
+    ray_origin: &Vec3,
+    ray_direction: &Vec3,
+    scene: &Scene,
+    depth: u32,
+) -> LinearColor {
     let intersection = closest_intersection(ray_origin, ray_direction, scene, f32::INFINITY);
 
     if !intersection.is_intersecting {
-        return scene.skybox.color;
+        return LinearColor::from(scene.skybox.color);
     }
 
-    shade(&intersection, ray_direction, scene).to_color()
+    let local_color = shade(&intersection, ray_direction, scene);
+    let reflectivity = scene.materials[intersection.material_id]
+        .reflectivity
+        .clamp(0.0, 1.0);
+
+    if reflectivity <= 0.0 || depth >= MAX_DEPTH {
+        return local_color;
+    }
+
+    let surface_normal = shading_normal(&intersection, scene);
+    let reflected_direction = ray_direction.reflect(surface_normal).normalize();
+    let offset_normal = if reflected_direction.dot(intersection.normal) >= 0.0 {
+        intersection.normal
+    } else {
+        intersection.normal * -1.0
+    };
+    let reflected_origin = intersection.point + offset_normal * RAY_EPSILON;
+    let reflected_color =
+        trace_ray_linear(&reflected_origin, &reflected_direction, scene, depth + 1);
+
+    local_color
+        .scale(1.0 - reflectivity)
+        .add(reflected_color.scale(reflectivity))
+}
+
+pub fn trace_ray(ray_origin: &Vec3, ray_direction: &Vec3, scene: &Scene) -> Color {
+    trace_ray_linear(ray_origin, ray_direction, scene, 0).to_color()
 }
 
 pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {

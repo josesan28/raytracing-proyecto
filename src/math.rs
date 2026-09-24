@@ -50,6 +50,10 @@ impl Vec3 {
 
         self / length
     }
+
+    pub fn reflect(self, normal: Self) -> Self {
+        self - normal * (2.0 * self.dot(normal))
+    }
 }
 
 impl Add for Vec3 {
