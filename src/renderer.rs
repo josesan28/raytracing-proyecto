@@ -1,9 +1,10 @@
 use crate::color::Color;
+use crate::framebuffer::Framebuffer;
 use crate::material::{Intersect, RayIntersect};
 use crate::math::Vec3;
 use crate::sphere::Sphere;
 
-pub fn cast_ray(
+pub fn trace_ray(
     ray_origin: &Vec3,
     ray_direction: &Vec3,
     objects: &[Sphere],
@@ -28,10 +29,14 @@ pub fn cast_ray(
     intersect.material.diffuse
 }
 
-pub fn render(width: usize, height: usize, objects: &[Sphere], background: Color) -> Vec<Color> {
-    let mut pixels = Vec::with_capacity(width * height);
+pub fn render(framebuffer: &mut Framebuffer, objects: &[Sphere]) {
+    framebuffer.clear();
+
+    let width = framebuffer.width;
+    let height = framebuffer.height;
     let aspect_ratio = width as f32 / height as f32;
     let ray_origin = Vec3::new(0.0, 0.0, 0.0);
+    let background = framebuffer.background_color();
 
     for y in 0..height {
         for x in 0..width {
@@ -40,9 +45,9 @@ pub fn render(width: usize, height: usize, objects: &[Sphere], background: Color
             let screen_x = screen_x * aspect_ratio;
             let ray_direction = Vec3::new(screen_x, screen_y, -1.0).normalize();
 
-            pixels.push(cast_ray(&ray_origin, &ray_direction, objects, background));
+            let color = trace_ray(&ray_origin, &ray_direction, objects, background);
+            framebuffer.set_current_color(color);
+            framebuffer.point(x, y);
         }
     }
-
-    pixels
 }
