@@ -17,39 +17,63 @@ impl Cube {
         }
     }
 
-    fn uv_at(&self, point: Vec3, normal: Vec3) -> Vec2 {
+    fn surface_coordinates(&self, point: Vec3, normal: Vec3) -> (Vec2, Vec3, Vec3) {
         let size = self.max - self.min;
 
         // Cada cara se observa desde fuera. U avanza hacia la derecha y V hacia arriba.
         if normal.x > 0.5 {
-            Vec2::new(
-                (self.max.z - point.z) / size.z,
-                (point.y - self.min.y) / size.y,
+            (
+                Vec2::new(
+                    (self.max.z - point.z) / size.z,
+                    (point.y - self.min.y) / size.y,
+                ),
+                Vec3::new(0.0, 0.0, -1.0),
+                Vec3::new(0.0, 1.0, 0.0),
             )
         } else if normal.x < -0.5 {
-            Vec2::new(
-                (point.z - self.min.z) / size.z,
-                (point.y - self.min.y) / size.y,
+            (
+                Vec2::new(
+                    (point.z - self.min.z) / size.z,
+                    (point.y - self.min.y) / size.y,
+                ),
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(0.0, 1.0, 0.0),
             )
         } else if normal.y > 0.5 {
-            Vec2::new(
-                (point.x - self.min.x) / size.x,
-                (self.max.z - point.z) / size.z,
+            (
+                Vec2::new(
+                    (point.x - self.min.x) / size.x,
+                    (self.max.z - point.z) / size.z,
+                ),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(0.0, 0.0, -1.0),
             )
         } else if normal.y < -0.5 {
-            Vec2::new(
-                (point.x - self.min.x) / size.x,
-                (point.z - self.min.z) / size.z,
+            (
+                Vec2::new(
+                    (point.x - self.min.x) / size.x,
+                    (point.z - self.min.z) / size.z,
+                ),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(0.0, 0.0, 1.0),
             )
         } else if normal.z > 0.5 {
-            Vec2::new(
-                (point.x - self.min.x) / size.x,
-                (point.y - self.min.y) / size.y,
+            (
+                Vec2::new(
+                    (point.x - self.min.x) / size.x,
+                    (point.y - self.min.y) / size.y,
+                ),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
             )
         } else {
-            Vec2::new(
-                (self.max.x - point.x) / size.x,
-                (point.y - self.min.y) / size.y,
+            (
+                Vec2::new(
+                    (self.max.x - point.x) / size.x,
+                    (point.y - self.min.y) / size.y,
+                ),
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
             )
         }
     }
@@ -131,11 +155,13 @@ impl RayIntersect for Cube {
         };
 
         let point = *ray_origin + *ray_direction * distance;
-        let uv = self.uv_at(point, outward_normal);
+        let (uv, tangent, bitangent) = self.surface_coordinates(point, outward_normal);
 
         Intersect::new(
             point,
             outward_normal,
+            tangent,
+            bitangent,
             distance,
             uv,
             self.material_id,

@@ -30,10 +30,12 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/musgo.ppm")?,
         Texture::from_ppm("assets/textures/madera.ppm")?,
         Texture::from_ppm("assets/textures/oro.ppm")?,
+        Texture::from_ppm("assets/textures/piedra_normal.ppm")?,
     ];
 
     let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
     stone.texture_id = Some(0);
+    stone.normal_map_id = Some(4);
     stone.specular = 0.15;
     stone.shininess = 24.0;
     stone.reflectivity = 0.05;

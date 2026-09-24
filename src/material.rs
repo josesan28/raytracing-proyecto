@@ -41,6 +41,8 @@ pub struct Intersect {
     pub point: Vec3,
     pub normal: Vec3,
     pub geometric_normal: Vec3,
+    pub tangent: Vec3,
+    pub bitangent: Vec3,
     pub uv: Vec2,
     pub distance: f32,
     pub is_intersecting: bool,
@@ -52,6 +54,8 @@ impl Intersect {
     pub fn new(
         point: Vec3,
         outward_normal: Vec3,
+        tangent: Vec3,
+        outward_bitangent: Vec3,
         distance: f32,
         uv: Vec2,
         material_id: MaterialId,
@@ -63,11 +67,18 @@ impl Intersect {
         } else {
             outward_normal * -1.0
         };
+        let bitangent = if front_face {
+            outward_bitangent
+        } else {
+            outward_bitangent * -1.0
+        };
 
         Self {
             point,
             normal,
             geometric_normal: outward_normal,
+            tangent,
+            bitangent,
             uv,
             distance,
             is_intersecting: true,
@@ -81,6 +92,8 @@ impl Intersect {
             point: Vec3::default(),
             normal: Vec3::default(),
             geometric_normal: Vec3::default(),
+            tangent: Vec3::default(),
+            bitangent: Vec3::default(),
             uv: Vec2::default(),
             distance: 0.0,
             is_intersecting: false,

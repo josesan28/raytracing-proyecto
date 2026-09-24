@@ -48,10 +48,19 @@ impl RayIntersect for Sphere {
             0.5 + outward_normal.z.atan2(outward_normal.x) / (2.0 * PI),
             0.5 - outward_normal.y.asin() / PI,
         );
+        let tangent_candidate = Vec3::new(-outward_normal.z, 0.0, outward_normal.x);
+        let tangent = if tangent_candidate.length() <= f32::EPSILON {
+            Vec3::new(1.0, 0.0, 0.0)
+        } else {
+            tangent_candidate.normalize()
+        };
+        let bitangent = outward_normal.cross(tangent).normalize();
 
         Intersect::new(
             point,
             outward_normal,
+            tangent,
+            bitangent,
             distance,
             uv,
             self.material_id,
