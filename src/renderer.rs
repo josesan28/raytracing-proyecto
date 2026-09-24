@@ -9,26 +9,23 @@ pub fn cast_ray(
     objects: &[Sphere],
     background: Color,
 ) -> Color {
-    let mut closest: Option<Intersect> = None;
+    let mut intersect = Intersect::empty();
+    let mut zbuffer = f32::INFINITY;
 
     for object in objects {
-        let intersect = object.ray_intersect(ray_origin, ray_direction);
+        let candidate = object.ray_intersect(ray_origin, ray_direction);
 
-        if intersect.is_intersecting {
-            let is_closer = match &closest {
-                Some(current) => intersect.distance < current.distance,
-                None => true,
-            };
-
-            if is_closer {
-                closest = Some(intersect);
-            }
+        if candidate.is_intersecting && candidate.distance < zbuffer {
+            zbuffer = candidate.distance;
+            intersect = candidate;
         }
     }
 
-    closest
-        .map(|intersect| intersect.material.diffuse)
-        .unwrap_or(background)
+    if !intersect.is_intersecting {
+        return background;
+    }
+
+    intersect.material.diffuse
 }
 
 pub fn render(width: usize, height: usize, objects: &[Sphere], background: Color) -> Vec<Color> {
