@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::material::{Intersect, MaterialId, RayIntersect};
+use crate::material::{Intersect, MaterialId, RAY_EPSILON, RayIntersect};
 use crate::math::{Vec2, Vec3};
 
 pub struct Sphere {
@@ -34,9 +34,9 @@ impl RayIntersect for Sphere {
         let square_root = discriminant.sqrt();
         let nearest = (-b - square_root) / (2.0 * a);
         let farthest = (-b + square_root) / (2.0 * a);
-        let distance = if nearest > 0.001 {
+        let distance = if nearest > RAY_EPSILON {
             nearest
-        } else if farthest > 0.001 {
+        } else if farthest > RAY_EPSILON {
             farthest
         } else {
             return Intersect::empty();

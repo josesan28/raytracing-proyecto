@@ -3,6 +3,7 @@ use crate::math::{Vec2, Vec3};
 
 pub type MaterialId = usize;
 pub type TextureId = usize;
+pub const RAY_EPSILON: f32 = 0.001;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]

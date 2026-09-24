@@ -1,11 +1,13 @@
 mod camera;
 mod color;
+mod cube;
 mod framebuffer;
 mod material;
 mod math;
 mod output;
 mod renderer;
 mod scene;
+#[allow(dead_code)]
 mod sphere;
 mod texture;
 
@@ -15,7 +17,7 @@ use framebuffer::Framebuffer;
 use math::Vec3;
 use output::write_ppm;
 use renderer::render;
-use scene::zbuffer_scene;
+use scene::temple_scene;
 
 fn main() -> std::io::Result<()> {
     use std::f32::consts::PI;
@@ -26,16 +28,16 @@ fn main() -> std::io::Result<()> {
     framebuffer.set_background_color(Color::new(8, 10, 18));
 
     let camera = Camera::new(
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, -3.5),
+        Vec3::new(0.0, 1.8, 3.5),
+        Vec3::new(0.0, 0.8, -5.5),
         Vec3::new(0.0, 1.0, 0.0),
         PI / 3.0,
     );
-    let scene = zbuffer_scene();
+    let scene = temple_scene();
     render(&mut framebuffer, &camera, &scene);
 
-    write_ppm("zbuffer.ppm", &framebuffer)?;
-    println!("Render terminado: zbuffer.ppm");
+    write_ppm("temple_cubes.ppm", &framebuffer)?;
+    println!("Render terminado: temple_cubes.ppm");
 
     Ok(())
 }
