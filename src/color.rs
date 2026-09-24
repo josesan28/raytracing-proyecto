@@ -34,6 +34,14 @@ impl LinearColor {
     pub const fn modulate(self, other: Self) -> Self {
         Self::new(self.r * other.r, self.g * other.g, self.b * other.b)
     }
+
+    pub const fn scale(self, scalar: f32) -> Self {
+        Self::new(self.r * scalar, self.g * scalar, self.b * scalar)
+    }
+
+    pub const fn add(self, other: Self) -> Self {
+        Self::new(self.r + other.r, self.g + other.g, self.b + other.b)
+    }
 }
 
 impl From<Color> for LinearColor {

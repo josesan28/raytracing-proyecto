@@ -1,10 +1,11 @@
+use std::io;
+
 use crate::color::{Color, LinearColor};
 use crate::cube::Cube;
 use crate::material::{Material, RayIntersect};
 use crate::math::Vec3;
 use crate::texture::Texture;
 
-#[allow(dead_code)]
 pub struct PointLight {
     pub position: Vec3,
     pub color: LinearColor,
@@ -19,7 +20,6 @@ pub struct Scene {
     pub objects: Vec<Box<dyn RayIntersect>>,
     pub materials: Vec<Material>,
     pub textures: Vec<Texture>,
-    #[allow(dead_code)]
     pub lights: Vec<PointLight>,
     pub skybox: Skybox,
 }
@@ -155,10 +155,25 @@ pub fn temple_scene() -> io::Result<Scene> {
         objects,
         materials,
         textures,
-        lights: Vec::new(),
+        lights: vec![
+            PointLight {
+                position: Vec3::new(-1.15, 1.35, -5.55),
+                color: LinearColor::new(1.0, 0.48, 0.18),
+                intensity: 10.0,
+            },
+            PointLight {
+                position: Vec3::new(1.15, 1.35, -5.55),
+                color: LinearColor::new(1.0, 0.58, 0.24),
+                intensity: 10.0,
+            },
+            PointLight {
+                position: Vec3::new(0.0, 5.5, -2.0),
+                color: LinearColor::new(0.45, 0.58, 0.82),
+                intensity: 14.0,
+            },
+        ],
         skybox: Skybox {
             color: Color::new(20, 27, 38),
         },
     })
 }
-use std::io;
