@@ -32,12 +32,16 @@ fn closest_intersection(
 fn surface_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
     let material = &scene.materials[intersection.material_id];
 
-    match material.texture_id {
-        Some(texture_id) => material
-            .albedo
-            .modulate(scene.textures[texture_id].sample_nearest(intersection.uv)),
-        None => material.albedo,
-    }
+    material.albedo.modulate(texture_color(intersection, scene))
+}
+
+fn texture_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
+    let material = &scene.materials[intersection.material_id];
+
+    material
+        .texture_id
+        .map(|texture_id| scene.textures[texture_id].sample_nearest(intersection.uv))
+        .unwrap_or(LinearColor::new(1.0, 1.0, 1.0))
 }
 
 fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
@@ -79,7 +83,10 @@ fn shade(intersection: &Intersect, ray_direction: &Vec3, scene: &Scene) -> Linea
     let albedo = surface_color(intersection, scene);
     let shading_normal = shading_normal(intersection, scene);
     let view_direction = (*ray_direction * -1.0).normalize();
-    let mut result = albedo.scale(AMBIENT_INTENSITY);
+    let emitted = material
+        .emission
+        .modulate(texture_color(intersection, scene));
+    let mut result = albedo.scale(AMBIENT_INTENSITY).add(emitted);
 
     for light in &scene.lights {
         let to_light = light.position - intersection.point;

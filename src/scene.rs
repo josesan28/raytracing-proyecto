@@ -33,6 +33,7 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/piedra_normal.ppm")?,
         Texture::from_ppm("assets/textures/agua.ppm")?,
         Texture::from_ppm("assets/textures/agua_normal.ppm")?,
+        Texture::from_ppm("assets/textures/emisivo.ppm")?,
     ];
 
     let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
@@ -68,7 +69,13 @@ pub fn temple_scene() -> io::Result<Scene> {
     water.reflectivity = 0.12;
     water.refractive_index = 1.33;
 
-    let materials = vec![stone, moss, wood, gold, water];
+    let mut emissive = Material::new(LinearColor::new(1.0, 0.52, 0.12));
+    emissive.texture_id = Some(7);
+    emissive.specular = 0.25;
+    emissive.shininess = 32.0;
+    emissive.emission = LinearColor::new(2.8, 1.15, 0.18);
+
+    let materials = vec![stone, moss, wood, gold, water, emissive];
 
     let objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
@@ -149,6 +156,53 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(2.7, 3.6, -6.15),
             0,
         )),
+        // Antorchas emisivas con soportes de madera.
+        Box::new(Cube::new(
+            Vec3::new(-1.42, 0.25, -6.12),
+            Vec3::new(-1.18, 1.18, -5.88),
+            2,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.18, 0.25, -6.12),
+            Vec3::new(1.42, 1.18, -5.88),
+            2,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-1.48, 1.15, -6.15),
+            Vec3::new(-1.12, 1.72, -5.80),
+            5,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.12, 1.15, -6.15),
+            Vec3::new(1.48, 1.72, -5.80),
+            5,
+        )),
+        // Runas de cubos delgados sobre la cara frontal del dintel.
+        Box::new(Cube::new(
+            Vec3::new(-1.05, 3.00, -6.14),
+            Vec3::new(-0.87, 3.43, -6.02),
+            5,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.87, 3.00, -6.14),
+            Vec3::new(-0.52, 3.15, -6.02),
+            5,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.10, 3.08, -6.14),
+            Vec3::new(0.10, 3.50, -6.02),
+            5,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(0.52, 3.28, -6.14),
+            Vec3::new(1.05, 3.43, -6.02),
+            5,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(0.87, 3.00, -6.14),
+            Vec3::new(1.05, 3.43, -6.02),
+            5,
+        )),
         // Bloques superiores dan una silueta escalonada al arco.
         Box::new(Cube::new(
             Vec3::new(-2.1, 3.6, -7.2),
@@ -211,12 +265,12 @@ pub fn temple_scene() -> io::Result<Scene> {
         textures,
         lights: vec![
             PointLight {
-                position: Vec3::new(-1.15, 1.35, -5.55),
+                position: Vec3::new(-1.30, 1.44, -5.65),
                 color: LinearColor::new(1.0, 0.48, 0.18),
                 intensity: 10.0,
             },
             PointLight {
-                position: Vec3::new(1.15, 1.35, -5.55),
+                position: Vec3::new(1.30, 1.44, -5.65),
                 color: LinearColor::new(1.0, 0.58, 0.24),
                 intensity: 10.0,
             },
