@@ -71,7 +71,7 @@ fn is_in_shadow(intersection: &Intersect, light_position: Vec3, scene: &Scene) -
         light_distance - RAY_EPSILON,
     );
 
-    blocker.is_intersecting
+    blocker.is_intersecting && scene.materials[blocker.material_id].transparency < 0.5
 }
 
 fn shade(intersection: &Intersect, ray_direction: &Vec3, scene: &Scene) -> LinearColor {
@@ -122,28 +122,59 @@ fn trace_ray_linear(
     }
 
     let local_color = shade(&intersection, ray_direction, scene);
-    let reflectivity = scene.materials[intersection.material_id]
-        .reflectivity
-        .clamp(0.0, 1.0);
+    let material = &scene.materials[intersection.material_id];
+    let reflectivity = material.reflectivity.clamp(0.0, 1.0);
+    let transparency = material.transparency.clamp(0.0, 1.0 - reflectivity);
 
-    if reflectivity <= 0.0 || depth >= MAX_DEPTH {
+    if (reflectivity <= 0.0 && transparency <= 0.0) || depth >= MAX_DEPTH {
         return local_color;
     }
 
     let surface_normal = shading_normal(&intersection, scene);
-    let reflected_direction = ray_direction.reflect(surface_normal).normalize();
-    let offset_normal = if reflected_direction.dot(intersection.normal) >= 0.0 {
-        intersection.normal
-    } else {
-        intersection.normal * -1.0
-    };
-    let reflected_origin = intersection.point + offset_normal * RAY_EPSILON;
-    let reflected_color =
-        trace_ray_linear(&reflected_origin, &reflected_direction, scene, depth + 1);
+    let cosine = (*ray_direction * -1.0).dot(surface_normal).clamp(0.0, 1.0);
+    let refractive_index = material.refractive_index.max(f32::EPSILON);
+    let base_fresnel = ((1.0 - refractive_index) / (1.0 + refractive_index)).powi(2);
+    let fresnel = base_fresnel + (1.0 - base_fresnel) * (1.0 - cosine).powi(5);
+    let mut reflected_weight = reflectivity + transparency * fresnel;
+    let mut refracted_weight = transparency * (1.0 - fresnel);
+    let local_weight = 1.0 - reflectivity - transparency;
 
-    local_color
-        .scale(1.0 - reflectivity)
-        .add(reflected_color.scale(reflectivity))
+    let index_ratio = if intersection.front_face {
+        1.0 / refractive_index
+    } else {
+        refractive_index
+    };
+    let refracted_direction = ray_direction.refract(surface_normal, index_ratio);
+
+    if refracted_direction.is_none() {
+        reflected_weight += refracted_weight;
+        refracted_weight = 0.0;
+    }
+
+    let mut result = local_color.scale(local_weight);
+
+    if reflected_weight > 0.0 {
+        let reflected_direction = ray_direction.reflect(surface_normal).normalize();
+        let offset_normal = if reflected_direction.dot(intersection.normal) >= 0.0 {
+            intersection.normal
+        } else {
+            intersection.normal * -1.0
+        };
+        let reflected_origin = intersection.point + offset_normal * RAY_EPSILON;
+        let reflected_color =
+            trace_ray_linear(&reflected_origin, &reflected_direction, scene, depth + 1);
+        result = result.add(reflected_color.scale(reflected_weight));
+    }
+
+    if let Some(refracted_direction) = refracted_direction {
+        let refracted_direction = refracted_direction.normalize();
+        let refracted_origin = intersection.point - intersection.normal * RAY_EPSILON;
+        let refracted_color =
+            trace_ray_linear(&refracted_origin, &refracted_direction, scene, depth + 1);
+        result = result.add(refracted_color.scale(refracted_weight));
+    }
+
+    result
 }
 
 pub fn trace_ray(ray_origin: &Vec3, ray_direction: &Vec3, scene: &Scene) -> Color {

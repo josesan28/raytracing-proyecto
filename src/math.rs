@@ -54,6 +54,17 @@ impl Vec3 {
     pub fn reflect(self, normal: Self) -> Self {
         self - normal * (2.0 * self.dot(normal))
     }
+
+    pub fn refract(self, normal: Self, index_ratio: f32) -> Option<Self> {
+        let cosine = (self * -1.0).dot(normal).clamp(0.0, 1.0);
+        let discriminant = 1.0 - index_ratio * index_ratio * (1.0 - cosine * cosine);
+
+        if discriminant < 0.0 {
+            None
+        } else {
+            Some(self * index_ratio + normal * (index_ratio * cosine - discriminant.sqrt()))
+        }
+    }
 }
 
 impl Add for Vec3 {

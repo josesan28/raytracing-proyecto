@@ -31,6 +31,8 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/madera.ppm")?,
         Texture::from_ppm("assets/textures/oro.ppm")?,
         Texture::from_ppm("assets/textures/piedra_normal.ppm")?,
+        Texture::from_ppm("assets/textures/agua.ppm")?,
+        Texture::from_ppm("assets/textures/agua_normal.ppm")?,
     ];
 
     let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
@@ -57,7 +59,16 @@ pub fn temple_scene() -> io::Result<Scene> {
     gold.shininess = 96.0;
     gold.reflectivity = 0.65;
 
-    let materials = vec![stone, moss, wood, gold];
+    let mut water = Material::new(LinearColor::new(0.58, 0.86, 0.92));
+    water.texture_id = Some(5);
+    water.normal_map_id = Some(6);
+    water.specular = 0.9;
+    water.shininess = 128.0;
+    water.transparency = 0.78;
+    water.reflectivity = 0.12;
+    water.refractive_index = 1.33;
+
+    let materials = vec![stone, moss, wood, gold, water];
 
     let objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
@@ -73,7 +84,48 @@ pub fn temple_scene() -> io::Result<Scene> {
         )),
         Box::new(Cube::new(
             Vec3::new(-1.0, -0.7, -5.0),
-            Vec3::new(1.0, -0.45, -3.1),
+            Vec3::new(1.0, -0.65, -3.1),
+            0,
+        )),
+        // Fuente con agua volumétrica y mosaicos sumergidos.
+        Box::new(Cube::new(
+            Vec3::new(-0.82, -0.63, -4.85),
+            Vec3::new(0.82, -0.14, -3.55),
+            4,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.70, -0.62, -4.65),
+            Vec3::new(-0.25, -0.52, -3.75),
+            3,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.20, -0.62, -4.65),
+            Vec3::new(0.20, -0.52, -3.75),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(0.25, -0.62, -4.65),
+            Vec3::new(0.70, -0.52, -3.75),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-1.15, -0.65, -5.15),
+            Vec3::new(-0.85, -0.03, -3.25),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(0.85, -0.65, -5.15),
+            Vec3::new(1.15, -0.03, -3.25),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.85, -0.65, -5.15),
+            Vec3::new(0.85, -0.03, -4.85),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.85, -0.65, -3.55),
+            Vec3::new(0.85, -0.03, -3.25),
             0,
         )),
         Box::new(Cube::new(
