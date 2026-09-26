@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::color::{Color, LinearColor};
+use crate::color::LinearColor;
 use crate::cube::Cube;
 use crate::material::{Material, RayIntersect};
 use crate::math::Vec3;
@@ -13,7 +13,7 @@ pub struct PointLight {
 }
 
 pub struct Skybox {
-    pub color: Color,
+    pub texture_id: usize,
 }
 
 pub struct Scene {
@@ -34,10 +34,12 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/agua.ppm")?,
         Texture::from_ppm("assets/textures/agua_normal.ppm")?,
         Texture::from_ppm("assets/textures/emisivo.ppm")?,
+        Texture::from_ppm("assets/textures/skybox_atardecer.ppm")?,
     ];
 
     let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
     stone.texture_id = Some(0);
+    stone.texture_scale = crate::math::Vec2::new(2.0, 2.0);
     stone.normal_map_id = Some(4);
     stone.specular = 0.15;
     stone.shininess = 24.0;
@@ -45,11 +47,13 @@ pub fn temple_scene() -> io::Result<Scene> {
 
     let mut moss = Material::new(LinearColor::new(0.82, 0.94, 0.78));
     moss.texture_id = Some(1);
+    moss.texture_scale = crate::math::Vec2::new(3.0, 3.0);
     moss.specular = 0.04;
     moss.shininess = 8.0;
 
     let mut wood = Material::new(LinearColor::new(0.92, 0.82, 0.68));
     wood.texture_id = Some(2);
+    wood.texture_scale = crate::math::Vec2::new(2.0, 2.0);
     wood.specular = 0.18;
     wood.shininess = 20.0;
     wood.reflectivity = 0.04;
@@ -62,6 +66,7 @@ pub fn temple_scene() -> io::Result<Scene> {
 
     let mut water = Material::new(LinearColor::new(0.58, 0.86, 0.92));
     water.texture_id = Some(5);
+    water.texture_scale = crate::math::Vec2::new(2.0, 2.0);
     water.normal_map_id = Some(6);
     water.specular = 0.9;
     water.shininess = 128.0;
@@ -73,15 +78,15 @@ pub fn temple_scene() -> io::Result<Scene> {
     emissive.texture_id = Some(7);
     emissive.specular = 0.25;
     emissive.shininess = 32.0;
-    emissive.emission = LinearColor::new(2.8, 1.15, 0.18);
+    emissive.emission = LinearColor::new(1.8, 0.72, 0.10);
 
     let materials = vec![stone, moss, wood, gold, water, emissive];
 
     let objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
         Box::new(Cube::new(
-            Vec3::new(-5.0, -1.0, -10.0),
-            Vec3::new(5.0, -0.7, -1.0),
+            Vec3::new(-6.0, -1.0, -10.0),
+            Vec3::new(6.0, -0.7, 4.5),
             1,
         )),
         Box::new(Cube::new(
@@ -150,6 +155,38 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(1.5, -0.7, -7.2),
             Vec3::new(2.5, 2.8, -6.2),
             0,
+        )),
+        // Basas y capiteles escalonados rompen la forma monolítica.
+        Box::new(Cube::new(
+            Vec3::new(-2.72, -0.7, -7.38),
+            Vec3::new(-1.28, -0.34, -6.02),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.28, -0.7, -7.38),
+            Vec3::new(2.72, -0.34, -6.02),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-2.72, 2.45, -7.38),
+            Vec3::new(-1.28, 2.88, -6.02),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.28, 2.45, -7.38),
+            Vec3::new(2.72, 2.88, -6.02),
+            0,
+        )),
+        // Placas de musgo adheridas a las columnas.
+        Box::new(Cube::new(
+            Vec3::new(-2.42, 0.35, -6.19),
+            Vec3::new(-2.08, 2.15, -6.07),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.88, 1.25, -6.19),
+            Vec3::new(2.35, 2.58, -6.07),
+            1,
         )),
         Box::new(Cube::new(
             Vec3::new(-2.7, 2.8, -7.25),
@@ -225,6 +262,16 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(0.65, 0.8, -7.65),
             3,
         )),
+        Box::new(Cube::new(
+            Vec3::new(-0.43, 0.8, -8.20),
+            Vec3::new(0.43, 1.12, -7.80),
+            3,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-0.18, 1.12, -8.08),
+            Vec3::new(0.18, 1.48, -7.92),
+            5,
+        )),
         // Muros rotos laterales de diferentes alturas.
         Box::new(Cube::new(
             Vec3::new(-4.8, -0.7, -8.8),
@@ -245,6 +292,48 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(2.9, -0.7, -8.2),
             Vec3::new(3.7, 1.2, -5.4),
             0,
+        )),
+        // Vegetación en masas asimétricas alrededor de las ruinas.
+        Box::new(Cube::new(
+            Vec3::new(-4.15, -0.7, -4.15),
+            Vec3::new(-3.25, 0.15, -3.35),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-4.55, -0.7, -5.05),
+            Vec3::new(-3.80, 0.65, -4.35),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(3.35, -0.7, -4.65),
+            Vec3::new(4.35, 0.35, -3.70),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(4.05, -0.7, -6.15),
+            Vec3::new(4.75, 0.85, -5.35),
+            1,
+        )),
+        // Troncos y copas cúbicas crean profundidad detrás del templo.
+        Box::new(Cube::new(
+            Vec3::new(-5.35, -0.7, -8.45),
+            Vec3::new(-4.95, 2.65, -8.05),
+            2,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-5.80, 2.05, -8.85),
+            Vec3::new(-4.45, 3.55, -7.55),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(4.85, -0.7, -9.10),
+            Vec3::new(5.20, 2.25, -8.75),
+            2,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(4.35, 1.75, -9.50),
+            Vec3::new(5.75, 3.20, -8.15),
+            1,
         )),
         // Bloques caídos que rompen la simetría del camino.
         Box::new(Cube::new(
@@ -279,9 +368,12 @@ pub fn temple_scene() -> io::Result<Scene> {
                 color: LinearColor::new(0.45, 0.58, 0.82),
                 intensity: 14.0,
             },
+            PointLight {
+                position: Vec3::new(-5.5, 7.5, 1.5),
+                color: LinearColor::new(1.0, 0.66, 0.38),
+                intensity: 38.0,
+            },
         ],
-        skybox: Skybox {
-            color: Color::new(20, 27, 38),
-        },
+        skybox: Skybox { texture_id: 8 },
     })
 }

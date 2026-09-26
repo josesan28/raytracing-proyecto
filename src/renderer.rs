@@ -5,7 +5,7 @@ use crate::material::{Intersect, RAY_EPSILON};
 use crate::math::Vec3;
 use crate::scene::Scene;
 
-const AMBIENT_INTENSITY: f32 = 0.14;
+const AMBIENT_INTENSITY: f32 = 0.19;
 const MAX_DEPTH: u32 = 3;
 
 fn closest_intersection(
@@ -37,10 +37,14 @@ fn surface_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
 
 fn texture_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
     let material = &scene.materials[intersection.material_id];
+    let scaled_uv = crate::math::Vec2::new(
+        intersection.uv.u * material.texture_scale.u,
+        intersection.uv.v * material.texture_scale.v,
+    );
 
     material
         .texture_id
-        .map(|texture_id| scene.textures[texture_id].sample_nearest(intersection.uv))
+        .map(|texture_id| scene.textures[texture_id].sample_nearest(scaled_uv))
         .unwrap_or(LinearColor::new(1.0, 1.0, 1.0))
 }
 
@@ -49,7 +53,11 @@ fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
     let Some(normal_map_id) = material.normal_map_id else {
         return intersection.normal;
     };
-    let sample = scene.textures[normal_map_id].sample_nearest(intersection.uv);
+    let scaled_uv = crate::math::Vec2::new(
+        intersection.uv.u * material.texture_scale.u,
+        intersection.uv.v * material.texture_scale.v,
+    );
+    let sample = scene.textures[normal_map_id].sample_nearest(scaled_uv);
     let tangent_normal = Vec3::new(
         sample.r * 2.0 - 1.0,
         sample.g * 2.0 - 1.0,
@@ -125,7 +133,7 @@ fn trace_ray_linear(
     let intersection = closest_intersection(ray_origin, ray_direction, scene, f32::INFINITY);
 
     if !intersection.is_intersecting {
-        return LinearColor::from(scene.skybox.color);
+        return scene.textures[scene.skybox.texture_id].sample_equirectangular(*ray_direction);
     }
 
     let local_color = shade(&intersection, ray_direction, scene);

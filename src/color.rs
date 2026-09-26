@@ -42,6 +42,10 @@ impl LinearColor {
     pub const fn add(self, other: Self) -> Self {
         Self::new(self.r + other.r, self.g + other.g, self.b + other.b)
     }
+
+    pub fn lerp(self, other: Self, amount: f32) -> Self {
+        self.scale(1.0 - amount).add(other.scale(amount))
+    }
 }
 
 impl From<Color> for LinearColor {

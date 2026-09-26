@@ -3,7 +3,7 @@ use std::io::{self, ErrorKind};
 use std::path::Path;
 
 use crate::color::LinearColor;
-use crate::math::Vec2;
+use crate::math::{Vec2, Vec3};
 
 pub struct Texture {
     pub width: usize,
@@ -73,6 +73,31 @@ impl Texture {
         let y = y.min(self.height - 1);
 
         self.pixels[y * self.width + x]
+    }
+
+    pub fn sample_equirectangular(&self, direction: Vec3) -> LinearColor {
+        use std::f32::consts::PI;
+
+        let direction = direction.normalize();
+        let u = 0.5 + direction.z.atan2(direction.x) / (2.0 * PI);
+        let v = 0.5 - direction.y.clamp(-1.0, 1.0).asin() / PI;
+        let x = u.rem_euclid(1.0) * self.width as f32 - 0.5;
+        let y = v.clamp(0.0, 1.0) * (self.height - 1) as f32;
+        let x0 = x.floor() as i32;
+        let y0 = y.floor() as usize;
+        let x1 = x0 + 1;
+        let y1 = (y0 + 1).min(self.height - 1);
+        let wrap_x = |value: i32| value.rem_euclid(self.width as i32) as usize;
+        let top_left = self.pixels[y0 * self.width + wrap_x(x0)];
+        let top_right = self.pixels[y0 * self.width + wrap_x(x1)];
+        let bottom_left = self.pixels[y1 * self.width + wrap_x(x0)];
+        let bottom_right = self.pixels[y1 * self.width + wrap_x(x1)];
+        let horizontal = x - x.floor();
+        let vertical = y - y.floor();
+
+        top_left
+            .lerp(top_right, horizontal)
+            .lerp(bottom_left.lerp(bottom_right, horizontal), vertical)
     }
 }
 

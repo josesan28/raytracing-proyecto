@@ -9,6 +9,7 @@ pub const RAY_EPSILON: f32 = 0.001;
 #[derive(Clone, Copy, Debug)]
 pub struct Material {
     pub albedo: LinearColor,
+    pub texture_scale: Vec2,
     pub texture_id: Option<TextureId>,
     pub normal_map_id: Option<TextureId>,
     pub specular: f32,
@@ -23,6 +24,7 @@ impl Material {
     pub const fn new(albedo: LinearColor) -> Self {
         Self {
             albedo,
+            texture_scale: Vec2::new(1.0, 1.0),
             texture_id: None,
             normal_map_id: None,
             specular: 0.0,
