@@ -7,6 +7,7 @@ mod framebuffer;
 mod material;
 mod math;
 mod output;
+mod procedural;
 mod renderer;
 mod scene;
 #[allow(dead_code)]

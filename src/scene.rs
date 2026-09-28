@@ -5,6 +5,7 @@ use crate::color::LinearColor;
 use crate::cube::Cube;
 use crate::material::{Material, RayIntersect};
 use crate::math::Vec3;
+use crate::procedural::{TerrainConfig, append_terrain};
 use crate::texture::Texture;
 
 pub struct PointLight {
@@ -84,13 +85,8 @@ pub fn temple_scene() -> io::Result<Scene> {
 
     let materials = vec![stone, moss, wood, gold, water, emissive];
 
-    let objects: Vec<Box<dyn RayIntersect>> = vec![
+    let mut objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
-        Box::new(Cube::new(
-            Vec3::new(-6.0, -1.0, -10.0),
-            Vec3::new(6.0, -0.7, 4.5),
-            1,
-        )),
         Box::new(Cube::new(
             Vec3::new(-0.9, -0.7, -3.0),
             Vec3::new(0.9, -0.5, -1.2),
@@ -408,6 +404,7 @@ pub fn temple_scene() -> io::Result<Scene> {
         )),
     ];
 
+    append_terrain(&mut objects, TerrainConfig::temple(40));
     let bvh = Bvh::build(&objects);
 
     Ok(Scene {
