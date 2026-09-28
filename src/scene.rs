@@ -272,6 +272,48 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(0.18, 1.48, -7.92),
             5,
         )),
+        // Escalones y santuario posterior enmarcan el altar sin cerrar el cielo.
+        Box::new(Cube::new(
+            Vec3::new(-1.55, -0.7, -9.15),
+            Vec3::new(1.55, -0.48, -8.55),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-1.28, -0.48, -9.05),
+            Vec3::new(1.28, -0.22, -8.58),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-3.45, -0.7, -9.65),
+            Vec3::new(-1.45, 2.15, -9.18),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(1.45, -0.7, -9.65),
+            Vec3::new(3.45, 1.65, -9.18),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-3.30, 1.72, -9.17),
+            Vec3::new(-2.25, 2.48, -9.05),
+            1,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(2.35, 1.20, -9.17),
+            Vec3::new(3.30, 2.02, -9.05),
+            1,
+        )),
+        // Pedestales secundarios sugieren estatuas perdidas a ambos lados.
+        Box::new(Cube::new(
+            Vec3::new(-3.20, -0.7, -8.95),
+            Vec3::new(-2.35, -0.12, -8.18),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(2.35, -0.7, -8.95),
+            Vec3::new(3.20, -0.12, -8.18),
+            0,
+        )),
         // Muros rotos laterales de diferentes alturas.
         Box::new(Cube::new(
             Vec3::new(-4.8, -0.7, -8.8),
@@ -344,6 +386,22 @@ pub fn temple_scene() -> io::Result<Scene> {
         Box::new(Cube::new(
             Vec3::new(2.0, -0.7, -4.6),
             Vec3::new(3.1, 0.15, -3.6),
+            1,
+        )),
+        // Una columna derrumbada conduce la vista desde el primer plano.
+        Box::new(Cube::new(
+            Vec3::new(-4.45, -0.7, -2.35),
+            Vec3::new(-3.65, -0.18, -1.55),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-3.58, -0.7, -2.28),
+            Vec3::new(-2.82, -0.12, -1.60),
+            0,
+        )),
+        Box::new(Cube::new(
+            Vec3::new(-2.74, -0.7, -2.20),
+            Vec3::new(-2.05, -0.22, -1.65),
             1,
         )),
     ];
