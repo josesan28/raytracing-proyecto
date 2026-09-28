@@ -14,19 +14,9 @@ fn closest_intersection(
     scene: &Scene,
     max_distance: f32,
 ) -> Intersect {
-    let mut intersection = Intersect::empty();
-    let mut nearest_distance = max_distance;
-
-    for object in &scene.objects {
-        let candidate = object.ray_intersect(ray_origin, ray_direction);
-
-        if candidate.is_intersecting && candidate.distance < nearest_distance {
-            nearest_distance = candidate.distance;
-            intersection = candidate;
-        }
-    }
-
-    intersection
+    scene
+        .bvh
+        .closest_intersection(&scene.objects, ray_origin, ray_direction, max_distance)
 }
 
 fn surface_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
@@ -202,13 +192,29 @@ pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
     let width = framebuffer.width;
     let height = framebuffer.height;
     let ray_origin = camera.origin();
+    let worker_count = std::thread::available_parallelism()
+        .map(usize::from)
+        .unwrap_or(1)
+        .min(height);
+    let rows_per_worker = height.div_ceil(worker_count);
+    let pixels_per_worker = rows_per_worker * width;
 
-    for y in 0..height {
-        for x in 0..width {
-            let ray_direction = camera.ray_direction(x, y, width, height);
-            let color = trace_ray(&ray_origin, &ray_direction, scene);
-            framebuffer.set_current_color(color);
-            framebuffer.set_pixel(x, y);
+    std::thread::scope(|scope| {
+        for (worker, pixels) in framebuffer
+            .pixels_mut()
+            .chunks_mut(pixels_per_worker)
+            .enumerate()
+        {
+            scope.spawn(move || {
+                let start_y = worker * rows_per_worker;
+                for (local_y, row) in pixels.chunks_mut(width).enumerate() {
+                    let y = start_y + local_y;
+                    for (x, pixel) in row.iter_mut().enumerate() {
+                        let ray_direction = camera.ray_direction(x, y, width, height);
+                        *pixel = trace_ray(&ray_origin, &ray_direction, scene);
+                    }
+                }
+            });
         }
-    }
+    });
 }

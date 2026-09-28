@@ -67,4 +67,10 @@ impl RayIntersect for Sphere {
             ray_direction,
         )
     }
+
+    fn bounding_box(&self) -> Aabb {
+        let radius = Vec3::new(self.radius, self.radius, self.radius);
+        Aabb::new(self.center - radius, self.center + radius)
+    }
 }
+use crate::bounding_box::Aabb;

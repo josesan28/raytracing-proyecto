@@ -1,3 +1,4 @@
+use crate::bounding_box::Aabb;
 use crate::color::LinearColor;
 use crate::math::{Vec2, Vec3};
 
@@ -105,6 +106,7 @@ impl Intersect {
     }
 }
 
-pub trait RayIntersect {
+pub trait RayIntersect: Sync {
     fn ray_intersect(&self, ray_origin: &Vec3, ray_direction: &Vec3) -> Intersect;
+    fn bounding_box(&self) -> Aabb;
 }

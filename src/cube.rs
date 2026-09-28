@@ -168,4 +168,9 @@ impl RayIntersect for Cube {
             ray_direction,
         )
     }
+
+    fn bounding_box(&self) -> Aabb {
+        Aabb::new(self.min, self.max)
+    }
 }
+use crate::bounding_box::Aabb;

@@ -1,5 +1,6 @@
 use std::io;
 
+use crate::bvh::Bvh;
 use crate::color::LinearColor;
 use crate::cube::Cube;
 use crate::material::{Material, RayIntersect};
@@ -22,6 +23,7 @@ pub struct Scene {
     pub textures: Vec<Texture>,
     pub lights: Vec<PointLight>,
     pub skybox: Skybox,
+    pub bvh: Bvh,
 }
 
 pub fn temple_scene() -> io::Result<Scene> {
@@ -99,7 +101,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(1.0, -0.65, -3.1),
             0,
         )),
-        // Fuente con agua volumétrica y mosaicos sumergidos.
+        // Fuente y mosaicos bajo el agua.
         Box::new(Cube::new(
             Vec3::new(-0.82, -0.63, -4.85),
             Vec3::new(0.82, -0.14, -3.55),
@@ -156,7 +158,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(2.5, 2.8, -6.2),
             0,
         )),
-        // Basas y capiteles escalonados rompen la forma monolítica.
+        // Bases y capiteles de las columnas.
         Box::new(Cube::new(
             Vec3::new(-2.72, -0.7, -7.38),
             Vec3::new(-1.28, -0.34, -6.02),
@@ -177,7 +179,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(2.72, 2.88, -6.02),
             0,
         )),
-        // Placas de musgo adheridas a las columnas.
+        // Musgo sobre las columnas.
         Box::new(Cube::new(
             Vec3::new(-2.42, 0.35, -6.19),
             Vec3::new(-2.08, 2.15, -6.07),
@@ -214,7 +216,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(1.48, 1.72, -5.80),
             5,
         )),
-        // Runas de cubos delgados sobre la cara frontal del dintel.
+        // Runas sobre el dintel.
         Box::new(Cube::new(
             Vec3::new(-1.05, 3.00, -6.14),
             Vec3::new(-0.87, 3.43, -6.02),
@@ -240,7 +242,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(1.05, 3.43, -6.02),
             5,
         )),
-        // Bloques superiores dan una silueta escalonada al arco.
+        // Bloques superiores del arco.
         Box::new(Cube::new(
             Vec3::new(-2.1, 3.6, -7.2),
             Vec3::new(-0.7, 4.1, -6.2),
@@ -251,7 +253,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(2.1, 4.1, -6.2),
             1,
         )),
-        // Altar visible a través del arco.
+        // Altar central.
         Box::new(Cube::new(
             Vec3::new(-1.1, -0.7, -8.6),
             Vec3::new(1.1, 0.0, -7.4),
@@ -272,7 +274,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(0.18, 1.48, -7.92),
             5,
         )),
-        // Escalones y santuario posterior enmarcan el altar sin cerrar el cielo.
+        // Escalones y muros del santuario posterior.
         Box::new(Cube::new(
             Vec3::new(-1.55, -0.7, -9.15),
             Vec3::new(1.55, -0.48, -8.55),
@@ -303,7 +305,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(3.30, 2.02, -9.05),
             1,
         )),
-        // Pedestales secundarios sugieren estatuas perdidas a ambos lados.
+        // Pedestales laterales.
         Box::new(Cube::new(
             Vec3::new(-3.20, -0.7, -8.95),
             Vec3::new(-2.35, -0.12, -8.18),
@@ -335,7 +337,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(3.7, 1.2, -5.4),
             0,
         )),
-        // Vegetación en masas asimétricas alrededor de las ruinas.
+        // Vegetación junto a las ruinas.
         Box::new(Cube::new(
             Vec3::new(-4.15, -0.7, -4.15),
             Vec3::new(-3.25, 0.15, -3.35),
@@ -356,7 +358,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(4.75, 0.85, -5.35),
             1,
         )),
-        // Troncos y copas cúbicas crean profundidad detrás del templo.
+        // Árboles detrás del templo.
         Box::new(Cube::new(
             Vec3::new(-5.35, -0.7, -8.45),
             Vec3::new(-4.95, 2.65, -8.05),
@@ -377,7 +379,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(5.75, 3.20, -8.15),
             1,
         )),
-        // Bloques caídos que rompen la simetría del camino.
+        // Bloques caídos junto al camino.
         Box::new(Cube::new(
             Vec3::new(-2.8, -0.7, -3.8),
             Vec3::new(-1.8, -0.05, -2.8),
@@ -388,7 +390,7 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(3.1, 0.15, -3.6),
             1,
         )),
-        // Una columna derrumbada conduce la vista desde el primer plano.
+        // Columna derrumbada.
         Box::new(Cube::new(
             Vec3::new(-4.45, -0.7, -2.35),
             Vec3::new(-3.65, -0.18, -1.55),
@@ -405,6 +407,8 @@ pub fn temple_scene() -> io::Result<Scene> {
             1,
         )),
     ];
+
+    let bvh = Bvh::build(&objects);
 
     Ok(Scene {
         objects,
@@ -433,5 +437,6 @@ pub fn temple_scene() -> io::Result<Scene> {
             },
         ],
         skybox: Skybox { texture_id: 8 },
+        bvh,
     })
 }
