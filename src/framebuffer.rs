@@ -33,10 +33,6 @@ impl Framebuffer {
         self.current_color = color;
     }
 
-    pub fn set_background_color(&mut self, color: Color) {
-        self.background_color = color;
-    }
-
     pub fn pixels(&self) -> &[Color] {
         &self.color_buffer
     }

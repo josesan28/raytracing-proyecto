@@ -1,5 +1,6 @@
 use crate::math::Vec3;
 
+#[derive(Clone, Copy)]
 pub struct Camera {
     pub eye: Vec3,
     pub center: Vec3,
@@ -36,7 +37,6 @@ impl Camera {
         self.changed = true;
     }
 
-    #[allow(dead_code)]
     pub fn orbit(&mut self, yaw: f32, pitch: f32) {
         let relative_position = self.eye - self.center;
         let radius = relative_position.length();
@@ -61,9 +61,11 @@ impl Camera {
         self.update_basis_vectors();
     }
 
-    #[allow(dead_code)]
     pub fn zoom(&mut self, amount: f32) {
-        self.eye = self.eye + self.forward * amount;
+        let current_distance = (self.center - self.eye).length();
+        let new_distance = (current_distance - amount).clamp(1.5, 20.0);
+        let applied_amount = current_distance - new_distance;
+        self.eye = self.eye + self.forward * applied_amount;
         self.update_basis_vectors();
     }
 
