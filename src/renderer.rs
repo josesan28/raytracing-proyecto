@@ -48,9 +48,10 @@ fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
         intersection.uv.v * material.texture_scale.v,
     );
     let sample = scene.textures[normal_map_id].sample_nearest(scaled_uv);
+    let strength = material.normal_map_strength.clamp(0.0, 1.0);
     let tangent_normal = Vec3::new(
-        sample.r * 2.0 - 1.0,
-        sample.g * 2.0 - 1.0,
+        (sample.r * 2.0 - 1.0) * strength,
+        (sample.g * 2.0 - 1.0) * strength,
         sample.b * 2.0 - 1.0,
     )
     .normalize();

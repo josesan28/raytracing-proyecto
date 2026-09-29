@@ -44,6 +44,7 @@ pub fn temple_scene() -> io::Result<Scene> {
     stone.texture_id = Some(0);
     stone.texture_scale = crate::math::Vec2::new(2.0, 2.0);
     stone.normal_map_id = Some(4);
+    stone.normal_map_strength = 0.75;
     stone.specular = 0.15;
     stone.shininess = 24.0;
     stone.reflectivity = 0.05;
@@ -71,6 +72,7 @@ pub fn temple_scene() -> io::Result<Scene> {
     water.texture_id = Some(5);
     water.texture_scale = crate::math::Vec2::new(2.0, 2.0);
     water.normal_map_id = Some(6);
+    water.normal_map_strength = 0.22;
     water.specular = 0.9;
     water.shininess = 128.0;
     water.transparency = 0.78;
