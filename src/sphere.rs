@@ -72,5 +72,30 @@ impl RayIntersect for Sphere {
         let radius = Vec3::new(self.radius, self.radius, self.radius);
         Aabb::new(self.center - radius, self.center + radius)
     }
+
+    fn material_id(&self) -> MaterialId {
+        self.material_id
+    }
+
+    fn intersects_before(
+        &self,
+        ray_origin: &Vec3,
+        ray_direction: &Vec3,
+        max_distance: f32,
+    ) -> bool {
+        let offset = *ray_origin - self.center;
+        let half_b = offset.dot(*ray_direction);
+        let c = offset.dot(offset) - self.radius * self.radius;
+        let discriminant = half_b * half_b - c;
+
+        if discriminant < 0.0 {
+            return false;
+        }
+
+        let root = discriminant.sqrt();
+        let near = -half_b - root;
+        let far = -half_b + root;
+        (near > RAY_EPSILON && near < max_distance) || (far > RAY_EPSILON && far < max_distance)
+    }
 }
 use crate::bounding_box::Aabb;

@@ -7,6 +7,7 @@ use crate::scene::Scene;
 
 const AMBIENT_INTENSITY: f32 = 0.19;
 const MAX_DEPTH: u32 = 3;
+const MIN_RAY_CONTRIBUTION: f32 = 1.0 / 4096.0;
 
 #[derive(Clone, Copy)]
 struct RenderOptions {
@@ -28,12 +29,6 @@ fn closest_intersection(
     scene
         .bvh
         .closest_intersection(&scene.objects, ray_origin, ray_direction, max_distance)
-}
-
-fn surface_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
-    let material = &scene.materials[intersection.material_id];
-
-    material.albedo.modulate(texture_color(intersection, scene))
 }
 
 fn texture_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
@@ -73,19 +68,20 @@ fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
         .normalize()
 }
 
-fn is_in_shadow(intersection: &Intersect, light_position: Vec3, scene: &Scene) -> bool {
-    let to_light = light_position - intersection.point;
-    let light_distance = to_light.length();
-    let light_direction = to_light / light_distance;
+fn is_in_shadow(
+    intersection: &Intersect,
+    light_direction: Vec3,
+    light_distance: f32,
+    scene: &Scene,
+) -> bool {
     let shadow_origin = intersection.point + intersection.normal * RAY_EPSILON;
-    let blocker = closest_intersection(
+    scene.bvh.is_occluded(
+        &scene.objects,
+        &scene.materials,
         &shadow_origin,
         &light_direction,
-        scene,
         light_distance - RAY_EPSILON,
-    );
-
-    blocker.is_intersecting && scene.materials[blocker.material_id].transparency < 0.5
+    )
 }
 
 fn shade(
@@ -93,24 +89,25 @@ fn shade(
     ray_direction: &Vec3,
     scene: &Scene,
     options: RenderOptions,
+    shading_normal: Vec3,
 ) -> LinearColor {
     let material = &scene.materials[intersection.material_id];
-    let albedo = surface_color(intersection, scene);
-    let shading_normal = shading_normal(intersection, scene);
-    let view_direction = (*ray_direction * -1.0).normalize();
-    let emitted = material
-        .emission
-        .modulate(texture_color(intersection, scene));
+    let texture = texture_color(intersection, scene);
+    let albedo = material.albedo.modulate(texture);
+    let view_direction = *ray_direction * -1.0;
+    let emitted = material.emission.modulate(texture);
     let mut result = albedo.scale(AMBIENT_INTENSITY).add(emitted);
 
     for light in &scene.lights {
         let to_light = light.position - intersection.point;
         let distance_squared = to_light.dot(to_light);
-        let light_direction = to_light.normalize();
+        let light_distance = distance_squared.sqrt();
+        let light_direction = to_light / light_distance;
         let normal_light = shading_normal.dot(light_direction).max(0.0);
 
         if normal_light <= 0.0
-            || (options.shadows && is_in_shadow(intersection, light.position, scene))
+            || (options.shadows
+                && is_in_shadow(intersection, light_direction, light_distance, scene))
         {
             continue;
         }
@@ -139,6 +136,7 @@ fn trace_ray_linear(
     scene: &Scene,
     depth: u32,
     options: RenderOptions,
+    contribution: f32,
 ) -> LinearColor {
     let intersection = closest_intersection(ray_origin, ray_direction, scene, f32::INFINITY);
 
@@ -146,7 +144,8 @@ fn trace_ray_linear(
         return scene.textures[scene.skybox.texture_id].sample_equirectangular(*ray_direction);
     }
 
-    let local_color = shade(&intersection, ray_direction, scene, options);
+    let surface_normal = shading_normal(&intersection, scene);
+    let local_color = shade(&intersection, ray_direction, scene, options, surface_normal);
     let material = &scene.materials[intersection.material_id];
     let reflectivity = material.reflectivity.clamp(0.0, 1.0);
     let transparency = material.transparency.clamp(0.0, 1.0 - reflectivity);
@@ -155,7 +154,6 @@ fn trace_ray_linear(
         return local_color;
     }
 
-    let surface_normal = shading_normal(&intersection, scene);
     let cosine = (*ray_direction * -1.0).dot(surface_normal).clamp(0.0, 1.0);
     let refractive_index = material.refractive_index.max(f32::EPSILON);
     let base_fresnel = ((1.0 - refractive_index) / (1.0 + refractive_index)).powi(2);
@@ -186,27 +184,35 @@ fn trace_ray_linear(
             intersection.normal * -1.0
         };
         let reflected_origin = intersection.point + offset_normal * RAY_EPSILON;
-        let reflected_color = trace_ray_linear(
-            &reflected_origin,
-            &reflected_direction,
-            scene,
-            depth + 1,
-            options,
-        );
-        result = result.add(reflected_color.scale(reflected_weight));
+        let reflected_contribution = contribution * reflected_weight;
+        if reflected_contribution >= MIN_RAY_CONTRIBUTION {
+            let reflected_color = trace_ray_linear(
+                &reflected_origin,
+                &reflected_direction,
+                scene,
+                depth + 1,
+                options,
+                reflected_contribution,
+            );
+            result = result.add(reflected_color.scale(reflected_weight));
+        }
     }
 
     if let Some(refracted_direction) = refracted_direction {
         let refracted_direction = refracted_direction.normalize();
         let refracted_origin = intersection.point - intersection.normal * RAY_EPSILON;
-        let refracted_color = trace_ray_linear(
-            &refracted_origin,
-            &refracted_direction,
-            scene,
-            depth + 1,
-            options,
-        );
-        result = result.add(refracted_color.scale(refracted_weight));
+        let refracted_contribution = contribution * refracted_weight;
+        if refracted_contribution >= MIN_RAY_CONTRIBUTION {
+            let refracted_color = trace_ray_linear(
+                &refracted_origin,
+                &refracted_direction,
+                scene,
+                depth + 1,
+                options,
+                refracted_contribution,
+            );
+            result = result.add(refracted_color.scale(refracted_weight));
+        }
     }
 
     result
@@ -218,7 +224,7 @@ fn trace_ray(
     scene: &Scene,
     options: RenderOptions,
 ) -> Color {
-    trace_ray_linear(ray_origin, ray_direction, scene, 0, options).to_color()
+    trace_ray_linear(ray_origin, ray_direction, scene, 0, options, 1.0).to_color()
 }
 
 pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
@@ -236,25 +242,38 @@ fn render_with_options(
     let width = framebuffer.width;
     let height = framebuffer.height;
     let ray_origin = camera.origin();
+    let perspective_scale = camera.perspective_scale();
+    let aspect_ratio = width as f32 / height as f32;
+    let screen_x: Vec<f32> = (0..width)
+        .map(|x| ((2.0 * (x as f32 + 0.5)) / width as f32 - 1.0) * aspect_ratio * perspective_scale)
+        .collect();
+    let screen_y: Vec<f32> = (0..height)
+        .map(|y| (1.0 - (2.0 * (y as f32 + 0.5)) / height as f32) * perspective_scale)
+        .collect();
     let worker_count = std::thread::available_parallelism()
         .map(usize::from)
         .unwrap_or(1)
         .min(height);
-    let rows_per_worker = height.div_ceil(worker_count);
-    let pixels_per_worker = rows_per_worker * width;
+    let task_count = (worker_count * 4).min(height);
+    let rows_per_task = height.div_ceil(task_count);
+    let pixels_per_task = rows_per_task * width;
 
     std::thread::scope(|scope| {
-        for (worker, pixels) in framebuffer
+        for (task, pixels) in framebuffer
             .pixels_mut()
-            .chunks_mut(pixels_per_worker)
+            .chunks_mut(pixels_per_task)
             .enumerate()
         {
+            let screen_x = &screen_x;
+            let screen_y = &screen_y;
             scope.spawn(move || {
-                let start_y = worker * rows_per_worker;
+                let start_y = task * rows_per_task;
                 for (local_y, row) in pixels.chunks_mut(width).enumerate() {
                     let y = start_y + local_y;
                     for (x, pixel) in row.iter_mut().enumerate() {
-                        let ray_direction = camera.ray_direction(x, y, width, height);
+                        let ray_direction =
+                            (camera.right * screen_x[x] + camera.up * screen_y[y] + camera.forward)
+                                .normalize();
                         *pixel = trace_ray(&ray_origin, &ray_direction, scene, options);
                     }
                 }

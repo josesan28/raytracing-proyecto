@@ -111,4 +111,15 @@ impl Intersect {
 pub trait RayIntersect: Sync {
     fn ray_intersect(&self, ray_origin: &Vec3, ray_direction: &Vec3) -> Intersect;
     fn bounding_box(&self) -> Aabb;
+    fn material_id(&self) -> MaterialId;
+
+    fn intersects_before(
+        &self,
+        ray_origin: &Vec3,
+        ray_direction: &Vec3,
+        max_distance: f32,
+    ) -> bool {
+        let intersection = self.ray_intersect(ray_origin, ray_direction);
+        intersection.is_intersecting && intersection.distance < max_distance
+    }
 }

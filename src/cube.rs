@@ -172,5 +172,19 @@ impl RayIntersect for Cube {
     fn bounding_box(&self) -> Aabb {
         Aabb::new(self.min, self.max)
     }
+
+    fn material_id(&self) -> MaterialId {
+        self.material_id
+    }
+
+    fn intersects_before(
+        &self,
+        ray_origin: &Vec3,
+        ray_direction: &Vec3,
+        max_distance: f32,
+    ) -> bool {
+        self.bounding_box()
+            .is_hit(ray_origin, ray_direction, max_distance)
+    }
 }
 use crate::bounding_box::Aabb;

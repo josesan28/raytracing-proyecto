@@ -1,5 +1,5 @@
 use crate::bounding_box::Aabb;
-use crate::material::{Intersect, RayIntersect};
+use crate::material::{Intersect, Material, RayIntersect};
 use crate::math::Vec3;
 
 const LEAF_SIZE: usize = 4;
@@ -75,6 +75,48 @@ impl Bvh {
         }
 
         closest
+    }
+
+    pub fn is_occluded(
+        &self,
+        objects: &[Box<dyn RayIntersect>],
+        materials: &[Material],
+        origin: &Vec3,
+        direction: &Vec3,
+        max_distance: f32,
+    ) -> bool {
+        if self.nodes.is_empty() {
+            return false;
+        }
+
+        let mut stack = [0_usize; 64];
+        let mut stack_size = 1;
+
+        while stack_size > 0 {
+            stack_size -= 1;
+            let node = &self.nodes[stack[stack_size]];
+            if !node.bounds.is_hit(origin, direction, max_distance) {
+                continue;
+            }
+
+            if node.count > 0 {
+                for &object_index in &self.object_indices[node.start..node.start + node.count] {
+                    let object = &objects[object_index];
+                    if materials[object.material_id()].transparency < 0.5
+                        && object.intersects_before(origin, direction, max_distance)
+                    {
+                        return true;
+                    }
+                }
+            } else {
+                stack[stack_size] = node.left;
+                stack_size += 1;
+                stack[stack_size] = node.right;
+                stack_size += 1;
+            }
+        }
+
+        false
     }
 }
 

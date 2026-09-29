@@ -30,6 +30,10 @@ impl Camera {
         self.eye
     }
 
+    pub fn perspective_scale(&self) -> f32 {
+        (self.fov * 0.5).tan()
+    }
+
     pub fn update_basis_vectors(&mut self) {
         self.forward = (self.center - self.eye).normalize();
         self.right = self.forward.cross(self.up).normalize();
@@ -76,6 +80,7 @@ impl Camera {
         changed
     }
 
+    #[allow(dead_code)]
     pub fn basis_change(&self, vector: &Vec3) -> Vec3 {
         Vec3::new(
             vector.x * self.right.x + vector.y * self.up.x - vector.z * self.forward.x,
@@ -84,11 +89,12 @@ impl Camera {
         )
     }
 
+    #[allow(dead_code)]
     pub fn ray_direction(&self, x: usize, y: usize, width: usize, height: usize) -> Vec3 {
         let width = width as f32;
         let height = height as f32;
         let aspect_ratio = width / height;
-        let perspective_scale = (self.fov / 2.0).tan();
+        let perspective_scale = self.perspective_scale();
 
         // Se muestrea el centro del píxel y se invierte Y porque la imagen
         // comienza en la esquina superior izquierda.
@@ -97,7 +103,7 @@ impl Camera {
         let screen_x = screen_x * aspect_ratio * perspective_scale;
         let screen_y = screen_y * perspective_scale;
 
-        let camera_direction = Vec3::new(screen_x, screen_y, -1.0).normalize();
+        let camera_direction = Vec3::new(screen_x, screen_y, -1.0);
         self.basis_change(&camera_direction).normalize()
     }
 }
