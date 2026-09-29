@@ -8,6 +8,17 @@ use crate::scene::Scene;
 const AMBIENT_INTENSITY: f32 = 0.19;
 const MAX_DEPTH: u32 = 3;
 
+#[derive(Clone, Copy)]
+struct RenderOptions {
+    max_depth: u32,
+    shadows: bool,
+}
+
+const FINAL_OPTIONS: RenderOptions = RenderOptions {
+    max_depth: MAX_DEPTH,
+    shadows: true,
+};
+
 fn closest_intersection(
     ray_origin: &Vec3,
     ray_direction: &Vec3,
@@ -77,7 +88,12 @@ fn is_in_shadow(intersection: &Intersect, light_position: Vec3, scene: &Scene) -
     blocker.is_intersecting && scene.materials[blocker.material_id].transparency < 0.5
 }
 
-fn shade(intersection: &Intersect, ray_direction: &Vec3, scene: &Scene) -> LinearColor {
+fn shade(
+    intersection: &Intersect,
+    ray_direction: &Vec3,
+    scene: &Scene,
+    options: RenderOptions,
+) -> LinearColor {
     let material = &scene.materials[intersection.material_id];
     let albedo = surface_color(intersection, scene);
     let shading_normal = shading_normal(intersection, scene);
@@ -93,7 +109,9 @@ fn shade(intersection: &Intersect, ray_direction: &Vec3, scene: &Scene) -> Linea
         let light_direction = to_light.normalize();
         let normal_light = shading_normal.dot(light_direction).max(0.0);
 
-        if normal_light <= 0.0 || is_in_shadow(intersection, light.position, scene) {
+        if normal_light <= 0.0
+            || (options.shadows && is_in_shadow(intersection, light.position, scene))
+        {
             continue;
         }
 
@@ -120,6 +138,7 @@ fn trace_ray_linear(
     ray_direction: &Vec3,
     scene: &Scene,
     depth: u32,
+    options: RenderOptions,
 ) -> LinearColor {
     let intersection = closest_intersection(ray_origin, ray_direction, scene, f32::INFINITY);
 
@@ -127,12 +146,12 @@ fn trace_ray_linear(
         return scene.textures[scene.skybox.texture_id].sample_equirectangular(*ray_direction);
     }
 
-    let local_color = shade(&intersection, ray_direction, scene);
+    let local_color = shade(&intersection, ray_direction, scene, options);
     let material = &scene.materials[intersection.material_id];
     let reflectivity = material.reflectivity.clamp(0.0, 1.0);
     let transparency = material.transparency.clamp(0.0, 1.0 - reflectivity);
 
-    if (reflectivity <= 0.0 && transparency <= 0.0) || depth >= MAX_DEPTH {
+    if (reflectivity <= 0.0 && transparency <= 0.0) || depth >= options.max_depth {
         return local_color;
     }
 
@@ -167,27 +186,51 @@ fn trace_ray_linear(
             intersection.normal * -1.0
         };
         let reflected_origin = intersection.point + offset_normal * RAY_EPSILON;
-        let reflected_color =
-            trace_ray_linear(&reflected_origin, &reflected_direction, scene, depth + 1);
+        let reflected_color = trace_ray_linear(
+            &reflected_origin,
+            &reflected_direction,
+            scene,
+            depth + 1,
+            options,
+        );
         result = result.add(reflected_color.scale(reflected_weight));
     }
 
     if let Some(refracted_direction) = refracted_direction {
         let refracted_direction = refracted_direction.normalize();
         let refracted_origin = intersection.point - intersection.normal * RAY_EPSILON;
-        let refracted_color =
-            trace_ray_linear(&refracted_origin, &refracted_direction, scene, depth + 1);
+        let refracted_color = trace_ray_linear(
+            &refracted_origin,
+            &refracted_direction,
+            scene,
+            depth + 1,
+            options,
+        );
         result = result.add(refracted_color.scale(refracted_weight));
     }
 
     result
 }
 
-pub fn trace_ray(ray_origin: &Vec3, ray_direction: &Vec3, scene: &Scene) -> Color {
-    trace_ray_linear(ray_origin, ray_direction, scene, 0).to_color()
+fn trace_ray(
+    ray_origin: &Vec3,
+    ray_direction: &Vec3,
+    scene: &Scene,
+    options: RenderOptions,
+) -> Color {
+    trace_ray_linear(ray_origin, ray_direction, scene, 0, options).to_color()
 }
 
 pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
+    render_with_options(framebuffer, camera, scene, FINAL_OPTIONS);
+}
+
+fn render_with_options(
+    framebuffer: &mut Framebuffer,
+    camera: &Camera,
+    scene: &Scene,
+    options: RenderOptions,
+) {
     framebuffer.clear();
 
     let width = framebuffer.width;
@@ -212,7 +255,7 @@ pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
                     let y = start_y + local_y;
                     for (x, pixel) in row.iter_mut().enumerate() {
                         let ray_direction = camera.ray_direction(x, y, width, height);
-                        *pixel = trace_ray(&ray_origin, &ray_direction, scene);
+                        *pixel = trace_ray(&ray_origin, &ray_direction, scene, options);
                     }
                 }
             });

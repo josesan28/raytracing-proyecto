@@ -20,8 +20,8 @@ mod platform {
 
     const WINDOW_WIDTH: i32 = 960;
     const WINDOW_HEIGHT: i32 = 580;
-    const RENDER_WIDTH: usize = 400;
-    const RENDER_HEIGHT: usize = 225;
+    const RENDER_WIDTH: usize = 800;
+    const RENDER_HEIGHT: usize = 450;
 
     const WM_DESTROY: u32 = 0x0002;
     const WM_SIZE: u32 = 0x0005;
@@ -305,7 +305,8 @@ mod platform {
         }
 
         let mut camera = initial_camera();
-        let mut framebuffer = Framebuffer::new(RENDER_WIDTH, RENDER_HEIGHT, Color::new(8, 10, 18));
+        let background = Color::new(8, 10, 18);
+        let mut framebuffer = Framebuffer::new(RENDER_WIDTH, RENDER_HEIGHT, background);
         let mut display_pixels = vec![0_u32; RENDER_WIDTH * RENDER_HEIGHT];
         let mut needs_render = true;
         let mut needs_present = true;
@@ -324,7 +325,9 @@ mod platform {
                 match message.message {
                     WM_SIZE | WM_PAINT => needs_present = true,
                     WM_KEYDOWN => {
-                        needs_render |= handle_key(message.word_parameter, &mut camera, scene)?;
+                        if handle_key(message.word_parameter, &mut camera, scene)? {
+                            needs_render = true;
+                        }
                         if message.word_parameter == VK_ESCAPE {
                             unsafe { DestroyWindow(window) };
                         }
@@ -374,7 +377,7 @@ mod platform {
             }
 
             if needs_present {
-                draw_frame(window, &display_pixels)?;
+                draw_frame(window, &display_pixels, RENDER_WIDTH, RENDER_HEIGHT)?;
                 needs_present = false;
             }
 
@@ -406,7 +409,10 @@ mod platform {
             VK_ADD | VK_OEM_PLUS => camera.zoom(0.7),
             VK_SUBTRACT | VK_OEM_MINUS => camera.zoom(-0.7),
             0x52 => *camera = initial_camera(),
-            0x50 => save_view(scene, camera)?,
+            0x50 => {
+                save_view(scene, camera)?;
+                return Ok(false);
+            }
             _ => return Ok(false),
         }
 
@@ -426,7 +432,12 @@ mod platform {
         }
     }
 
-    fn draw_frame(window: WindowHandle, pixels: &[u32]) -> io::Result<()> {
+    fn draw_frame(
+        window: WindowHandle,
+        pixels: &[u32],
+        source_width: usize,
+        source_height: usize,
+    ) -> io::Result<()> {
         let mut rectangle = Rectangle::default();
         if unsafe { GetClientRect(window, &mut rectangle) } == 0 {
             return Err(io::Error::last_os_error());
@@ -440,12 +451,12 @@ mod platform {
         let bitmap_info = BitmapInfo {
             header: BitmapInfoHeader {
                 size: size_of::<BitmapInfoHeader>() as u32,
-                width: RENDER_WIDTH as i32,
-                height: -(RENDER_HEIGHT as i32),
+                width: source_width as i32,
+                height: -(source_height as i32),
                 planes: 1,
                 bit_count: 32,
                 compression: BI_RGB,
-                image_size: (RENDER_WIDTH * RENDER_HEIGHT * 4) as u32,
+                image_size: (source_width * source_height * 4) as u32,
                 x_pixels_per_meter: 0,
                 y_pixels_per_meter: 0,
                 colors_used: 0,
@@ -463,8 +474,8 @@ mod platform {
                 rectangle.bottom - rectangle.top,
                 0,
                 0,
-                RENDER_WIDTH as i32,
-                RENDER_HEIGHT as i32,
+                source_width as i32,
+                source_height as i32,
                 pixels.as_ptr().cast(),
                 &bitmap_info,
                 DIB_RGB_COLORS,
