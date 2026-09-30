@@ -18,10 +18,10 @@ mod platform {
     type DeviceContext = Handle;
     type InstanceHandle = Handle;
 
-    const WINDOW_WIDTH: i32 = 960;
-    const WINDOW_HEIGHT: i32 = 580;
-    const RENDER_WIDTH: usize = 800;
-    const RENDER_HEIGHT: usize = 450;
+    const RENDER_WIDTH: usize = 1280;
+    const RENDER_HEIGHT: usize = 720;
+    const SAVED_RENDER_WIDTH: usize = 1600;
+    const SAVED_RENDER_HEIGHT: usize = 900;
 
     const WM_DESTROY: u32 = 0x0002;
     const WM_SIZE: u32 = 0x0005;
@@ -53,6 +53,7 @@ mod platform {
     const DIB_RGB_COLORS: u32 = 0;
     const SRCCOPY: u32 = 0x00CC0020;
     const BI_RGB: u32 = 0;
+    const HALFTONE: i32 = 4;
     const IDC_ARROW: usize = 32512;
 
     #[repr(C)]
@@ -159,6 +160,7 @@ mod platform {
     #[link(name = "user32")]
     unsafe extern "system" {
         fn RegisterClassW(window_class: *const WindowClass) -> u16;
+        fn AdjustWindowRect(rectangle: *mut Rectangle, style: u32, has_menu: i32) -> i32;
         fn CreateWindowExW(
             extended_style: u32,
             class_name: *const u16,
@@ -206,6 +208,7 @@ mod platform {
 
     #[link(name = "gdi32")]
     unsafe extern "system" {
+        fn SetStretchBltMode(context: DeviceContext, stretch_mode: i32) -> i32;
         fn StretchDIBits(
             context: DeviceContext,
             destination_x: i32,
@@ -278,16 +281,29 @@ mod platform {
             return Err(io::Error::last_os_error());
         }
 
+        let window_style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+        let mut window_rectangle = Rectangle {
+            left: 0,
+            top: 0,
+            right: RENDER_WIDTH as i32,
+            bottom: RENDER_HEIGHT as i32,
+        };
+        if unsafe { AdjustWindowRect(&mut window_rectangle, window_style, 0) } == 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let window_width = window_rectangle.right - window_rectangle.left;
+        let window_height = window_rectangle.bottom - window_rectangle.top;
+
         let window = unsafe {
             CreateWindowExW(
                 0,
                 class_name.as_ptr(),
                 title.as_ptr(),
-                WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                window_style,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
+                window_width,
+                window_height,
                 null_mut(),
                 null_mut(),
                 instance,
@@ -377,7 +393,12 @@ mod platform {
             }
 
             if needs_present {
-                draw_frame(window, &display_pixels, RENDER_WIDTH, RENDER_HEIGHT)?;
+                draw_frame(
+                    window,
+                    &display_pixels,
+                    framebuffer.width,
+                    framebuffer.height,
+                )?;
                 needs_present = false;
             }
 
@@ -420,7 +441,11 @@ mod platform {
     }
 
     fn save_view(scene: &Scene, camera: &Camera) -> io::Result<()> {
-        let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
+        let mut framebuffer = Framebuffer::new(
+            SAVED_RENDER_WIDTH,
+            SAVED_RENDER_HEIGHT,
+            Color::new(8, 10, 18),
+        );
         render(&mut framebuffer, camera, scene);
         write_bmp("window_view.bmp", &framebuffer)
     }
@@ -466,6 +491,7 @@ mod platform {
         };
 
         unsafe {
+            SetStretchBltMode(context, HALFTONE);
             StretchDIBits(
                 context,
                 0,

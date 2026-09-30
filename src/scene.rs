@@ -462,6 +462,11 @@ pub fn temple_scene() -> io::Result<Scene> {
                 color: LinearColor::new(1.0, 0.66, 0.38),
                 intensity: 38.0,
             },
+            PointLight {
+                position: Vec3::new(0.0, 8.0, -10.5),
+                color: LinearColor::new(1.0, 0.72, 0.42),
+                intensity: 18.0,
+            },
         ],
         skybox: Skybox { texture_id: 8 },
         bvh,
@@ -726,8 +731,8 @@ fn append_maya_complex(objects: &mut Vec<Box<dyn RayIntersect>>) {
         ),
         (
             Vec3::new(1.72, 3.46, -18.10),
-            Vec3::new(2.82, 5.18, -14.18),
-            1,
+            Vec3::new(2.82, 5.52, -14.18),
+            0,
         ),
         (
             Vec3::new(-2.82, 5.02, -18.08),
@@ -736,21 +741,44 @@ fn append_maya_complex(objects: &mut Vec<Box<dyn RayIntersect>>) {
         ),
         (
             Vec3::new(-2.18, 5.58, -17.70),
-            Vec3::new(1.45, 6.32, -14.72),
-            1,
+            Vec3::new(2.18, 6.32, -14.72),
+            0,
         ),
         (
             Vec3::new(-1.42, 6.32, -17.35),
-            Vec3::new(0.72, 6.92, -15.08),
+            Vec3::new(1.42, 6.92, -15.08),
             0,
         ),
         (
             Vec3::new(-0.68, 3.46, -14.16),
             Vec3::new(0.68, 4.82, -13.96),
-            5,
+            3,
         ),
     ] {
         objects.push(Box::new(Cube::new(min, max, material)));
+    }
+
+    // Un remate de oro reflectivo corona el eje simétrico del santuario.
+    objects.push(Box::new(Cube::new(
+        Vec3::new(-0.68, 6.92, -16.82),
+        Vec3::new(0.68, 7.20, -15.62),
+        3,
+    )));
+    objects.push(Box::new(Cube::new(
+        Vec3::new(-0.30, 7.20, -16.58),
+        Vec3::new(0.30, 7.72, -15.86),
+        3,
+    )));
+
+    // Pares de musgo conservan el desgaste sin romper la simetría del santuario.
+    for (min, max) in [
+        (
+            Vec3::new(-2.55, 4.18, -14.17),
+            Vec3::new(-2.05, 4.78, -14.05),
+        ),
+        (Vec3::new(2.05, 4.18, -14.17), Vec3::new(2.55, 4.78, -14.05)),
+    ] {
+        objects.push(Box::new(Cube::new(min, max, 1)));
     }
 
     // Dos basamentos menores amplían la plaza sin competir con la pirámide central.

@@ -35,8 +35,10 @@ fn closest_intersection(
 fn sky_color(ray_direction: Vec3, scene: &Scene) -> LinearColor {
     let sky = scene.textures[scene.skybox.texture_id].sample_equirectangular(ray_direction);
     let alignment = ray_direction.dot(SUN_DIRECTION).clamp(-1.0, 1.0);
-    let halo = ((alignment - 0.985) / 0.015).clamp(0.0, 1.0).powf(3.0);
-    let disk = ((alignment - 0.99935) / 0.00065).clamp(0.0, 1.0).powf(0.35);
+    let halo_base = ((alignment - 0.985) / 0.015).clamp(0.0, 1.0);
+    let halo = halo_base * halo_base * halo_base;
+    let disk_base = ((alignment - 0.99935) / 0.00065).clamp(0.0, 1.0);
+    let disk = disk_base.sqrt().sqrt();
     let sun = LinearColor::new(0.78, 0.94, 0.58);
 
     sky.add(sun.scale(halo * 0.48 + disk * 1.65))

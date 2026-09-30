@@ -26,6 +26,9 @@ use output::{write_bmp, write_ppm};
 use renderer::render;
 use scene::{Scene, temple_scene};
 
+const FINAL_RENDER_WIDTH: usize = 1600;
+const FINAL_RENDER_HEIGHT: usize = 900;
+
 fn main() -> std::io::Result<()> {
     let scene = temple_scene()?;
     let arguments: Vec<String> = std::env::args().collect();
@@ -134,7 +137,11 @@ fn display_in_terminal(framebuffer: &Framebuffer, camera: &Camera) -> std::io::R
 }
 
 fn save_interactive_view(scene: &Scene, camera: &Camera) -> std::io::Result<()> {
-    let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
+    let mut framebuffer = Framebuffer::new(
+        FINAL_RENDER_WIDTH,
+        FINAL_RENDER_HEIGHT,
+        Color::new(8, 10, 18),
+    );
     render(&mut framebuffer, camera, scene);
     write_bmp("interactive_view.bmp", &framebuffer)?;
     Ok(())
@@ -142,8 +149,13 @@ fn save_interactive_view(scene: &Scene, camera: &Camera) -> std::io::Result<()> 
 
 fn render_main_view(scene: &Scene) -> std::io::Result<()> {
     use std::f32::consts::PI;
+    use std::time::Instant;
 
-    let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
+    let mut framebuffer = Framebuffer::new(
+        FINAL_RENDER_WIDTH,
+        FINAL_RENDER_HEIGHT,
+        Color::new(8, 10, 18),
+    );
     let camera = Camera::new(
         Vec3::new(11.5, 7.2, 12.5),
         Vec3::new(0.0, 1.45, -9.2),
@@ -151,10 +163,16 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
         PI / 3.5,
     );
 
+    let render_start = Instant::now();
     render(&mut framebuffer, &camera, scene);
+    let render_time = render_start.elapsed();
     write_ppm("temple_cubes.ppm", &framebuffer)?;
     write_bmp("temple_cubes.bmp", &framebuffer)?;
-    println!("Render terminado: temple_cubes.ppm y temple_cubes.bmp");
+    println!(
+        "Render de {}x{} completado en {:.2?}",
+        framebuffer.width, framebuffer.height, render_time
+    );
+    println!("Archivos generados: temple_cubes.ppm y temple_cubes.bmp");
 
     Ok(())
 }
