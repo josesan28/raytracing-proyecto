@@ -11,7 +11,7 @@ pub struct TerrainConfig {
     pub cell_size: f32,
     pub base_height: f32,
     pub stone_material: MaterialId,
-    pub moss_material: MaterialId,
+    pub ground_material: MaterialId,
 }
 
 impl TerrainConfig {
@@ -25,7 +25,7 @@ impl TerrainConfig {
             cell_size: 1.0,
             base_height: -1.5,
             stone_material: 0,
-            moss_material: 1,
+            ground_material: 6,
         }
     }
 }
@@ -51,7 +51,7 @@ pub fn append_terrain(objects: &mut Vec<Box<dyn RayIntersect>>, config: TerrainC
             let top = -0.7 + terrain * 0.52 * relief;
             let moss_limit = 0.08 - relief * 0.26;
             let material_id = if moisture - terrain * 0.25 > moss_limit {
-                config.moss_material
+                config.ground_material
             } else {
                 config.stone_material
             };

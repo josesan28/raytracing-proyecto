@@ -53,7 +53,7 @@ mod platform {
     const DIB_RGB_COLORS: u32 = 0;
     const SRCCOPY: u32 = 0x00CC0020;
     const BI_RGB: u32 = 0;
-    const HALFTONE: i32 = 4;
+    const COLORONCOLOR: i32 = 3;
     const IDC_ARROW: usize = 32512;
 
     #[repr(C)]
@@ -159,6 +159,7 @@ mod platform {
 
     #[link(name = "user32")]
     unsafe extern "system" {
+        fn SetProcessDPIAware() -> i32;
         fn RegisterClassW(window_class: *const WindowClass) -> u16;
         fn AdjustWindowRect(rectangle: *mut Rectangle, style: u32, has_menu: i32) -> i32;
         fn CreateWindowExW(
@@ -259,6 +260,10 @@ mod platform {
     }
 
     pub fn run(scene: &Scene) -> io::Result<()> {
+        unsafe {
+            SetProcessDPIAware();
+        }
+
         let class_name = wide_string("CpuRaytracerWindow");
         let title = wide_string(
             "Ruinas del templo | Arrastra: rotar | Rueda: zoom | WASD: rotar | P: guardar",
@@ -491,7 +496,7 @@ mod platform {
         };
 
         unsafe {
-            SetStretchBltMode(context, HALFTONE);
+            SetStretchBltMode(context, COLORONCOLOR);
             StretchDIBits(
                 context,
                 0,

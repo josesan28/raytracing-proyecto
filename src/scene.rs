@@ -38,39 +38,54 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/agua_normal.ppm")?,
         Texture::from_ppm("assets/textures/emisivo.ppm")?,
         Texture::from_ppm("assets/textures/skybox_atardecer.ppm")?,
+        Texture::from_ppm("assets/textures/oro_normal.ppm")?,
+        Texture::from_ppm("assets/textures/suelo_selva.ppm")?,
+        Texture::from_ppm("assets/textures/suelo_selva_normal.ppm")?,
+        Texture::from_ppm("assets/textures/corteza_normal.ppm")?,
+        Texture::from_ppm("assets/textures/corteza.ppm")?,
+        Texture::from_ppm("assets/textures/hojas_arbol.ppm")?,
+        Texture::from_ppm("assets/textures/hojas_arbol_normal.ppm")?,
+        Texture::from_ppm("assets/textures/llama_lava.ppm")?,
+        Texture::from_ppm("assets/textures/llama_lava_normal.ppm")?,
+        Texture::from_ppm("assets/textures/musgo_normal.ppm")?,
+        Texture::from_ppm("assets/textures/madera_normal.ppm")?,
     ];
 
     let mut stone = Material::new(LinearColor::new(0.92, 0.94, 0.90));
     stone.texture_id = Some(0);
-    stone.texture_scale = crate::math::Vec2::new(2.0, 2.0);
+    stone.texture_scale = crate::math::Vec2::new(1.0, 1.0);
     stone.normal_map_id = Some(4);
     stone.normal_map_strength = 0.75;
     stone.specular = 0.15;
     stone.shininess = 24.0;
-    stone.reflectivity = 0.05;
 
     let mut moss = Material::new(LinearColor::new(0.82, 0.94, 0.78));
     moss.texture_id = Some(1);
-    moss.texture_scale = crate::math::Vec2::new(3.0, 3.0);
+    moss.texture_scale = crate::math::Vec2::new(1.75, 1.75);
+    moss.normal_map_id = Some(18);
+    moss.normal_map_strength = 0.45;
     moss.specular = 0.04;
     moss.shininess = 8.0;
 
     let mut wood = Material::new(LinearColor::new(0.92, 0.82, 0.68));
     wood.texture_id = Some(2);
-    wood.texture_scale = crate::math::Vec2::new(2.0, 2.0);
+    wood.texture_scale = crate::math::Vec2::new(1.5, 1.5);
+    wood.normal_map_id = Some(19);
+    wood.normal_map_strength = 0.55;
     wood.specular = 0.18;
     wood.shininess = 20.0;
-    wood.reflectivity = 0.04;
 
     let mut gold = Material::new(LinearColor::new(1.0, 0.90, 0.55));
     gold.texture_id = Some(3);
+    gold.normal_map_id = Some(9);
+    gold.normal_map_strength = 0.32;
     gold.specular = 0.85;
     gold.shininess = 96.0;
     gold.reflectivity = 0.65;
 
     let mut water = Material::new(LinearColor::new(0.58, 0.86, 0.92));
     water.texture_id = Some(5);
-    water.texture_scale = crate::math::Vec2::new(2.0, 2.0);
+    water.texture_scale = crate::math::Vec2::new(1.5, 1.5);
     water.normal_map_id = Some(6);
     water.normal_map_strength = 0.22;
     water.specular = 0.9;
@@ -85,7 +100,39 @@ pub fn temple_scene() -> io::Result<Scene> {
     emissive.shininess = 32.0;
     emissive.emission = LinearColor::new(1.8, 0.72, 0.10);
 
-    let materials = vec![stone, moss, wood, gold, water, emissive];
+    let mut ground = Material::new(LinearColor::new(0.76, 0.82, 0.72));
+    ground.texture_id = Some(10);
+    ground.normal_map_id = Some(11);
+    ground.normal_map_strength = 0.38;
+    ground.specular = 0.05;
+    ground.shininess = 10.0;
+
+    let mut bark = Material::new(LinearColor::new(0.78, 0.66, 0.50));
+    bark.texture_id = Some(13);
+    bark.texture_scale = crate::math::Vec2::new(1.0, 2.0);
+    bark.normal_map_id = Some(12);
+    bark.normal_map_strength = 0.58;
+    bark.specular = 0.06;
+    bark.shininess = 12.0;
+
+    let mut leaves = Material::new(LinearColor::new(0.42, 0.68, 0.32));
+    leaves.texture_id = Some(14);
+    leaves.normal_map_id = Some(15);
+    leaves.normal_map_strength = 0.35;
+    leaves.specular = 0.03;
+    leaves.shininess = 8.0;
+
+    let mut flame = Material::new(LinearColor::new(1.0, 0.68, 0.32));
+    flame.texture_id = Some(16);
+    flame.normal_map_id = Some(17);
+    flame.normal_map_strength = 0.20;
+    flame.specular = 0.20;
+    flame.shininess = 24.0;
+    flame.emission = LinearColor::new(2.2, 0.72, 0.10);
+
+    let materials = vec![
+        stone, moss, wood, gold, water, emissive, ground, bark, leaves, flame,
+    ];
 
     let mut objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.
@@ -207,38 +254,12 @@ pub fn temple_scene() -> io::Result<Scene> {
         Box::new(Cube::new(
             Vec3::new(-1.48, 1.15, -6.15),
             Vec3::new(-1.12, 1.72, -5.80),
-            5,
+            9,
         )),
         Box::new(Cube::new(
             Vec3::new(1.12, 1.15, -6.15),
             Vec3::new(1.48, 1.72, -5.80),
-            5,
-        )),
-        // Runas sobre el dintel.
-        Box::new(Cube::new(
-            Vec3::new(-1.05, 3.00, -6.14),
-            Vec3::new(-0.87, 3.43, -6.02),
-            5,
-        )),
-        Box::new(Cube::new(
-            Vec3::new(-0.87, 3.00, -6.14),
-            Vec3::new(-0.52, 3.15, -6.02),
-            5,
-        )),
-        Box::new(Cube::new(
-            Vec3::new(-0.10, 3.08, -6.14),
-            Vec3::new(0.10, 3.50, -6.02),
-            5,
-        )),
-        Box::new(Cube::new(
-            Vec3::new(0.52, 3.28, -6.14),
-            Vec3::new(1.05, 3.43, -6.02),
-            5,
-        )),
-        Box::new(Cube::new(
-            Vec3::new(0.87, 3.00, -6.14),
-            Vec3::new(1.05, 3.43, -6.02),
-            5,
+            9,
         )),
         // Bloques superiores del arco.
         Box::new(Cube::new(
@@ -261,11 +282,6 @@ pub fn temple_scene() -> io::Result<Scene> {
             Vec3::new(-0.43, 0.8, -8.20),
             Vec3::new(0.43, 1.12, -7.80),
             3,
-        )),
-        Box::new(Cube::new(
-            Vec3::new(-0.18, 1.12, -8.08),
-            Vec3::new(0.18, 1.48, -7.92),
-            5,
         )),
         // Escalones y muros del santuario posterior.
         Box::new(Cube::new(
@@ -364,43 +380,43 @@ pub fn temple_scene() -> io::Result<Scene> {
         Box::new(Cube::new(
             Vec3::new(-4.15, -0.7, -4.15),
             Vec3::new(-3.25, 0.15, -3.35),
-            1,
+            8,
         )),
         Box::new(Cube::new(
             Vec3::new(-4.55, -0.7, -5.05),
             Vec3::new(-3.80, 0.65, -4.35),
-            1,
+            8,
         )),
         Box::new(Cube::new(
             Vec3::new(3.35, -0.7, -4.65),
             Vec3::new(4.35, 0.35, -3.70),
-            1,
+            8,
         )),
         Box::new(Cube::new(
             Vec3::new(4.05, -0.7, -6.15),
             Vec3::new(4.75, 0.85, -5.35),
-            1,
+            8,
         )),
         // Árboles detrás del templo.
         Box::new(Cube::new(
             Vec3::new(-5.35, -0.7, -8.45),
             Vec3::new(-4.95, 2.65, -8.05),
-            2,
+            7,
         )),
         Box::new(Cube::new(
             Vec3::new(-5.80, 2.05, -8.85),
             Vec3::new(-4.45, 3.55, -7.55),
-            1,
+            8,
         )),
         Box::new(Cube::new(
             Vec3::new(4.85, -0.7, -9.10),
             Vec3::new(5.20, 2.25, -8.75),
-            2,
+            7,
         )),
         Box::new(Cube::new(
             Vec3::new(4.35, 1.75, -9.50),
             Vec3::new(5.75, 3.20, -8.15),
-            1,
+            8,
         )),
         // Bloques caídos junto al camino.
         Box::new(Cube::new(
@@ -559,7 +575,7 @@ fn append_ruin_details(objects: &mut Vec<Box<dyn RayIntersect>>) {
         (Vec3::new(5.75, -0.68, -6.18), Vec3::new(6.62, 0.08, -5.28)),
         (Vec3::new(5.02, 0.14, -7.18), Vec3::new(5.92, 0.82, -6.30)),
     ] {
-        objects.push(Box::new(Cube::new(min, max, 1)));
+        objects.push(Box::new(Cube::new(min, max, 8)));
     }
 }
 
@@ -591,7 +607,7 @@ fn append_outer_ruins(objects: &mut Vec<Box<dyn RayIntersect>>) {
             Vec3::new(-1.78, 2.42, 0.24),
             0,
         ),
-        (Vec3::new(1.82, 1.72, -0.62), Vec3::new(4.66, 2.24, 0.24), 1),
+        (Vec3::new(1.82, 1.72, -0.62), Vec3::new(4.66, 2.24, 0.24), 0),
         (
             Vec3::new(-4.42, 0.78, 0.19),
             Vec3::new(-4.18, 1.92, 0.31),
@@ -691,12 +707,12 @@ fn append_outer_ruins(objects: &mut Vec<Box<dyn RayIntersect>>) {
         objects.push(Box::new(Cube::new(
             Vec3::new(x - 0.24, -0.68, z - 0.24),
             Vec3::new(x + 0.24, height, z + 0.24),
-            2,
+            7,
         )));
         objects.push(Box::new(Cube::new(
             Vec3::new(x - crown_size * 0.5, height - 0.72, z - crown_size * 0.5),
             Vec3::new(x + crown_size * 0.5, height + 0.72, z + crown_size * 0.5),
-            1,
+            8,
         )));
     }
 }
