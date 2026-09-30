@@ -393,8 +393,8 @@ mod platform {
         use std::f32::consts::PI;
 
         Camera::new(
-            Vec3::new(3.65, 2.55, 2.15),
-            Vec3::new(0.0, 0.75, -5.7),
+            Vec3::new(11.5, 7.2, 12.5),
+            Vec3::new(0.0, 1.45, -9.2),
             Vec3::new(0.0, 1.0, 0.0),
             PI / 3.5,
         )

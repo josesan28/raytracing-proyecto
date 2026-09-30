@@ -45,8 +45,8 @@ fn interactive_camera() -> Camera {
     use std::f32::consts::PI;
 
     Camera::new(
-        Vec3::new(3.65, 2.55, 2.15),
-        Vec3::new(0.0, 0.75, -5.7),
+        Vec3::new(11.5, 7.2, 12.5),
+        Vec3::new(0.0, 1.45, -9.2),
         Vec3::new(0.0, 1.0, 0.0),
         PI / 3.5,
     )
@@ -145,8 +145,8 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
 
     let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
     let camera = Camera::new(
-        Vec3::new(3.65, 2.55, 2.15),
-        Vec3::new(0.0, 0.75, -5.7),
+        Vec3::new(11.5, 7.2, 12.5),
+        Vec3::new(0.0, 1.45, -9.2),
         Vec3::new(0.0, 1.0, 0.0),
         PI / 3.5,
     );
@@ -171,8 +171,8 @@ fn render_animation(scene: &Scene) -> std::io::Result<()> {
     for frame in 0..FRAME_COUNT {
         let progress = frame as f32 / (FRAME_COUNT - 1) as f32;
         let mut camera = Camera::new(
-            Vec3::new(0.0, 2.8, 5.4),
-            Vec3::new(0.0, 0.8, -5.8),
+            Vec3::new(0.0, 8.4, 16.0),
+            Vec3::new(0.0, 1.5, -9.5),
             Vec3::new(0.0, 1.0, 0.0),
             PI / 3.5,
         );

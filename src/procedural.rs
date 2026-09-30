@@ -18,10 +18,10 @@ impl TerrainConfig {
     pub fn temple(seed: u32) -> Self {
         Self {
             seed,
-            width: 16,
-            depth: 16,
-            origin_x: -8.0,
-            origin_z: -11.0,
+            width: 32,
+            depth: 32,
+            origin_x: -16.0,
+            origin_z: -21.0,
             cell_size: 1.0,
             base_height: -1.5,
             stone_material: 0,
@@ -49,7 +49,8 @@ pub fn append_terrain(objects: &mut Vec<Box<dyn RayIntersect>>, config: TerrainC
             );
             let relief = relief_outside_sanctuary(center_x, center_z);
             let top = -0.7 + terrain * 0.52 * relief;
-            let material_id = if moisture - terrain * 0.25 > 0.04 {
+            let moss_limit = 0.08 - relief * 0.26;
+            let material_id = if moisture - terrain * 0.25 > moss_limit {
                 config.moss_material
             } else {
                 config.stone_material
@@ -65,11 +66,11 @@ pub fn append_terrain(objects: &mut Vec<Box<dyn RayIntersect>>, config: TerrainC
 }
 
 fn relief_outside_sanctuary(x: f32, z: f32) -> f32 {
-    let distance_x = (x.abs() - 3.2).max(0.0);
-    let distance_z = if z < -10.2 {
-        -10.2 - z
-    } else if z > -0.8 {
-        z + 0.8
+    let distance_x = (x.abs() - 7.0).max(0.0);
+    let distance_z = if z < -20.5 {
+        -20.5 - z
+    } else if z > 1.2 {
+        z - 1.2
     } else {
         0.0
     };
