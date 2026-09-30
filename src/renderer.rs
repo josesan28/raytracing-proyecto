@@ -8,6 +8,7 @@ use crate::scene::Scene;
 const AMBIENT_INTENSITY: f32 = 0.19;
 const MAX_DEPTH: u32 = 3;
 const MIN_RAY_CONTRIBUTION: f32 = 1.0 / 4096.0;
+const SUN_DIRECTION: Vec3 = Vec3::new(-0.363, -0.038, -0.931);
 
 #[derive(Clone, Copy)]
 struct RenderOptions {
@@ -29,6 +30,16 @@ fn closest_intersection(
     scene
         .bvh
         .closest_intersection(&scene.objects, ray_origin, ray_direction, max_distance)
+}
+
+fn sky_color(ray_direction: Vec3, scene: &Scene) -> LinearColor {
+    let sky = scene.textures[scene.skybox.texture_id].sample_equirectangular(ray_direction);
+    let alignment = ray_direction.dot(SUN_DIRECTION).clamp(-1.0, 1.0);
+    let halo = ((alignment - 0.985) / 0.015).clamp(0.0, 1.0).powf(3.0);
+    let disk = ((alignment - 0.99935) / 0.00065).clamp(0.0, 1.0).powf(0.35);
+    let sun = LinearColor::new(0.78, 0.94, 0.58);
+
+    sky.add(sun.scale(halo * 0.48 + disk * 1.65))
 }
 
 fn texture_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
@@ -141,7 +152,7 @@ fn trace_ray_linear(
     let intersection = closest_intersection(ray_origin, ray_direction, scene, f32::INFINITY);
 
     if !intersection.is_intersecting {
-        return scene.textures[scene.skybox.texture_id].sample_equirectangular(*ray_direction);
+        return sky_color(*ray_direction, scene);
     }
 
     let surface_normal = shading_normal(&intersection, scene);
