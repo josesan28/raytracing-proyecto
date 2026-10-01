@@ -40,7 +40,9 @@ pub fn append_terrain(objects: &mut Vec<Box<dyn RayIntersect>>, config: TerrainC
             let center_x = min_x + config.cell_size * 0.5;
             let center_z = min_z + config.cell_size * 0.5;
 
-            let terrain = fractal_noise(config.seed, center_x * 0.16, center_z * 0.16, 4);
+            let broad_relief = fractal_noise(config.seed, center_x * 0.13, center_z * 0.13, 3);
+            let fine_relief =
+                value_noise(config.seed ^ 0xA511_E9B3, center_x * 0.47, center_z * 0.47);
             let moisture = fractal_noise(
                 config.seed ^ 0x9E37_79B9,
                 center_x * 0.12,
@@ -48,7 +50,10 @@ pub fn append_terrain(objects: &mut Vec<Box<dyn RayIntersect>>, config: TerrainC
                 3,
             );
             let relief = relief_outside_sanctuary(center_x, center_z);
-            let top = -0.7 + terrain * 0.52 * relief;
+            // Las ondulaciones grandes evitan un contorno plano y el detalle fino
+            // rompe la uniformidad sin agregar geometría ni costo al trazado.
+            let terrain = broad_relief * 1.02 + fine_relief * 0.18;
+            let top = -0.7 + terrain * relief;
             let moss_limit = 0.08 - relief * 0.26;
             let material_id = if moisture - terrain * 0.25 > moss_limit {
                 config.ground_material
@@ -75,7 +80,7 @@ fn relief_outside_sanctuary(x: f32, z: f32) -> f32 {
         0.0
     };
 
-    (distance_x.max(distance_z) / 3.0).min(1.0)
+    smooth_step((distance_x.max(distance_z) / 3.0).min(1.0))
 }
 
 fn fractal_noise(seed: u32, x: f32, z: f32, octaves: usize) -> f32 {

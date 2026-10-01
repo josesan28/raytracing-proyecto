@@ -22,7 +22,7 @@ use camera::Camera;
 use color::Color;
 use framebuffer::Framebuffer;
 use math::Vec3;
-use output::{write_bmp, write_ppm};
+use output::{write_bmp, write_png, write_ppm};
 use renderer::render;
 use scene::{Scene, temple_scene};
 
@@ -143,7 +143,7 @@ fn save_interactive_view(scene: &Scene, camera: &Camera) -> std::io::Result<()> 
         Color::new(8, 10, 18),
     );
     render(&mut framebuffer, camera, scene);
-    write_bmp("interactive_view.bmp", &framebuffer)?;
+    write_png("interactive_view.png", &framebuffer)?;
     Ok(())
 }
 
@@ -168,11 +168,12 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
     let render_time = render_start.elapsed();
     write_ppm("temple_cubes.ppm", &framebuffer)?;
     write_bmp("temple_cubes.bmp", &framebuffer)?;
+    write_png("temple_cubes.png", &framebuffer)?;
     println!(
         "Render de {}x{} completado en {:.2?}",
         framebuffer.width, framebuffer.height, render_time
     );
-    println!("Archivos generados: temple_cubes.ppm y temple_cubes.bmp");
+    println!("Archivos generados: temple_cubes.ppm, temple_cubes.bmp y temple_cubes.png");
 
     Ok(())
 }
@@ -202,8 +203,8 @@ fn render_animation(scene: &Scene) -> std::io::Result<()> {
         camera.zoom(zoom);
         render(&mut framebuffer, &camera, scene);
 
-        let output_path = format!("{OUTPUT_DIRECTORY}/frame_{frame:03}.bmp");
-        write_bmp(&output_path, &framebuffer)?;
+        let output_path = format!("{OUTPUT_DIRECTORY}/frame_{frame:03}.png");
+        write_png(&output_path, &framebuffer)?;
         println!("Cuadro {}/{FRAME_COUNT}: {output_path}", frame + 1);
     }
 

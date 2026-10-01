@@ -9,7 +9,7 @@ mod platform {
     use crate::color::Color;
     use crate::framebuffer::Framebuffer;
     use crate::math::Vec3;
-    use crate::output::write_bmp;
+    use crate::output::write_png;
     use crate::renderer::render;
     use crate::scene::Scene;
 
@@ -452,7 +452,7 @@ mod platform {
             Color::new(8, 10, 18),
         );
         render(&mut framebuffer, camera, scene);
-        write_bmp("window_view.bmp", &framebuffer)
+        write_png("window_view.png", &framebuffer)
     }
 
     fn convert_pixels(framebuffer: &Framebuffer, output: &mut [u32]) {
