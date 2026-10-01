@@ -28,7 +28,7 @@ pub struct Scene {
 }
 
 pub fn temple_scene() -> io::Result<Scene> {
-    let textures = vec![
+    let mut textures = vec![
         Texture::from_ppm("assets/textures/piedra.ppm")?,
         Texture::from_ppm("assets/textures/musgo.ppm")?,
         Texture::from_ppm("assets/textures/madera.ppm")?,
@@ -133,6 +133,18 @@ pub fn temple_scene() -> io::Result<Scene> {
     let materials = vec![
         stone, moss, wood, gold, water, emissive, ground, bark, leaves, flame,
     ];
+
+    // Solo albedo opaco: el cielo, el agua y la emisión conservan sus valores.
+    for texture_id in [0, 1, 2, 3, 10, 13, 14] {
+        textures[texture_id].enhance_detail(0.65);
+    }
+    // Cada material de esta escena posee su propio mapa normal. Si se comparte
+    // uno con distinta intensidad, debe cargarse como una textura independiente.
+    for material in &materials {
+        if let Some(normal_map_id) = material.normal_map_id {
+            textures[normal_map_id].prepare_normal_map(material.normal_map_strength);
+        }
+    }
 
     let mut objects: Vec<Box<dyn RayIntersect>> = vec![
         // Plataforma y camino central.

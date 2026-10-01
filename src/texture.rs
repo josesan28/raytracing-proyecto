@@ -12,6 +12,71 @@ pub struct Texture {
 }
 
 impl Texture {
+    // Refuerza el detalle a escala media una sola vez, sin reducir resolución.
+    // El promedio es periódico, igual que el muestreo de las superficies.
+    pub fn enhance_detail(&mut self, amount: f32) {
+        let radius = (self.width.min(self.height) / 32).clamp(1, 16);
+        let diameter = radius * 2 + 1;
+        let luminance: Vec<f32> = self
+            .pixels
+            .iter()
+            .map(|p| p.r * 0.2126 + p.g * 0.7152 + p.b * 0.0722)
+            .collect();
+        let mut horizontal = vec![0.0; self.pixels.len()];
+        for y in 0..self.height {
+            let mut sum = 0.0;
+            for offset in 0..diameter {
+                let x =
+                    (offset as isize - radius as isize).rem_euclid(self.width as isize) as usize;
+                sum += luminance[y * self.width + x];
+            }
+            for x in 0..self.width {
+                horizontal[y * self.width + x] = sum / diameter as f32;
+                let outgoing =
+                    (x as isize - radius as isize).rem_euclid(self.width as isize) as usize;
+                let incoming = (x + radius + 1) % self.width;
+                sum += luminance[y * self.width + incoming] - luminance[y * self.width + outgoing];
+            }
+        }
+        for x in 0..self.width {
+            let mut sum = 0.0;
+            for offset in 0..diameter {
+                let y =
+                    (offset as isize - radius as isize).rem_euclid(self.height as isize) as usize;
+                sum += horizontal[y * self.width + x];
+            }
+            for y in 0..self.height {
+                let index = y * self.width + x;
+                let detail = luminance[index] - sum / diameter as f32;
+                // Ganancia acotada: conserva tonos y evita recortar luces/sombras.
+                let gain = (1.0 + amount * detail / luminance[index].max(0.02)).clamp(0.65, 1.35);
+                let pixel = self.pixels[index];
+                let gain = gain.min(1.0 / pixel.r.max(pixel.g).max(pixel.b).max(0.001));
+                self.pixels[index] = pixel.scale(gain);
+                let outgoing =
+                    (y as isize - radius as isize).rem_euclid(self.height as isize) as usize;
+                let incoming = (y + radius + 1) % self.height;
+                sum +=
+                    horizontal[incoming * self.width + x] - horizontal[outgoing * self.width + x];
+            }
+        }
+    }
+
+    // Después de esta preparación, los canales guardan un vector tangente
+    // firmado y normalizado, no un color RGB. Solo para mapas normales.
+    pub fn prepare_normal_map(&mut self, strength: f32) {
+        let strength = strength.clamp(0.0, 1.0);
+        for pixel in &mut self.pixels {
+            let normal = Vec3::new(
+                (pixel.r * 2.0 - 1.0) * strength,
+                (pixel.g * 2.0 - 1.0) * strength,
+                pixel.b * 2.0 - 1.0,
+            )
+            .normalize();
+            *pixel = LinearColor::new(normal.x, normal.y, normal.z);
+        }
+    }
+
     pub fn from_ppm(path: impl AsRef<Path>) -> io::Result<Self> {
         let contents = fs::read_to_string(path)?;
         let mut tokens = contents

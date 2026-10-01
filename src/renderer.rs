@@ -67,13 +67,7 @@ fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
         intersection.uv.v * material.texture_scale.v,
     );
     let sample = scene.textures[normal_map_id].sample_nearest(scaled_uv);
-    let strength = material.normal_map_strength.clamp(0.0, 1.0);
-    let tangent_normal = Vec3::new(
-        (sample.r * 2.0 - 1.0) * strength,
-        (sample.g * 2.0 - 1.0) * strength,
-        sample.b * 2.0 - 1.0,
-    )
-    .normalize();
+    let tangent_normal = Vec3::new(sample.r, sample.g, sample.b);
 
     (intersection.tangent * tangent_normal.x
         + intersection.bitangent * tangent_normal.y
@@ -267,27 +261,36 @@ fn render_with_options(
         .map(usize::from)
         .unwrap_or(1)
         .min(height);
-    let task_count = (worker_count * 4).min(height);
-    let rows_per_task = height.div_ceil(task_count);
+    // Franjas pequeñas equilibran cielo barato y geometría con rayos secundarios.
+    let rows_per_task = 4;
     let pixels_per_task = rows_per_task * width;
-
-    std::thread::scope(|scope| {
-        for (task, pixels) in framebuffer
+    let tasks = std::sync::Mutex::new(
+        framebuffer
             .pixels_mut()
             .chunks_mut(pixels_per_task)
-            .enumerate()
-        {
+            .enumerate(),
+    );
+
+    std::thread::scope(|scope| {
+        for _ in 0..worker_count {
             let screen_x = &screen_x;
             let screen_y = &screen_y;
+            let tasks = &tasks;
             scope.spawn(move || {
-                let start_y = task * rows_per_task;
-                for (local_y, row) in pixels.chunks_mut(width).enumerate() {
-                    let y = start_y + local_y;
-                    for (x, pixel) in row.iter_mut().enumerate() {
-                        let ray_direction =
-                            (camera.right * screen_x[x] + camera.up * screen_y[y] + camera.forward)
+                loop {
+                    // El bloqueo solo reparte franjas; el trazado usa píxeles exclusivos.
+                    let task = tasks.lock().expect("Cola de render disponible").next();
+                    let Some((task, pixels)) = task else { break };
+                    let start_y = task * rows_per_task;
+                    for (local_y, row) in pixels.chunks_mut(width).enumerate() {
+                        let y = start_y + local_y;
+                        for (x, pixel) in row.iter_mut().enumerate() {
+                            let ray_direction = (camera.right * screen_x[x]
+                                + camera.up * screen_y[y]
+                                + camera.forward)
                                 .normalize();
-                        *pixel = trace_ray(&ray_origin, &ray_direction, scene, options);
+                            *pixel = trace_ray(&ray_origin, &ray_direction, scene, options);
+                        }
                     }
                 }
             });
