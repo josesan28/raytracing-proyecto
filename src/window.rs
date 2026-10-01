@@ -18,10 +18,15 @@ mod platform {
     type DeviceContext = Handle;
     type InstanceHandle = Handle;
 
-    const RENDER_WIDTH: usize = 1280;
-    const RENDER_HEIGHT: usize = 720;
+    const WINDOW_WIDTH: usize = 1280;
+    const WINDOW_HEIGHT: usize = 720;
+    const RENDER_WIDTH: usize = 800;
+    const RENDER_HEIGHT: usize = 450;
     const SAVED_RENDER_WIDTH: usize = 1600;
     const SAVED_RENDER_HEIGHT: usize = 900;
+    const MOUSE_ORBIT_SENSITIVITY: f32 = 0.0035;
+    const KEYBOARD_ORBIT_STEP: f32 = 0.055;
+    const ZOOM_STEP: f32 = 1.0;
 
     const WM_DESTROY: u32 = 0x0002;
     const WM_SIZE: u32 = 0x0005;
@@ -290,8 +295,8 @@ mod platform {
         let mut window_rectangle = Rectangle {
             left: 0,
             top: 0,
-            right: RENDER_WIDTH as i32,
-            bottom: RENDER_HEIGHT as i32,
+            right: WINDOW_WIDTH as i32,
+            bottom: WINDOW_HEIGHT as i32,
         };
         if unsafe { AdjustWindowRect(&mut window_rectangle, window_style, 0) } == 0 {
             return Err(io::Error::last_os_error());
@@ -367,14 +372,17 @@ mod platform {
                         let delta_x = current_mouse.0 - previous_mouse.0;
                         let delta_y = current_mouse.1 - previous_mouse.1;
                         if delta_x != 0 || delta_y != 0 {
-                            camera.orbit(-(delta_x as f32) * 0.006, -(delta_y as f32) * 0.006);
+                            camera.orbit(
+                                -(delta_x as f32) * MOUSE_ORBIT_SENSITIVITY,
+                                -(delta_y as f32) * MOUSE_ORBIT_SENSITIVITY,
+                            );
                             previous_mouse = current_mouse;
                             needs_render = true;
                         }
                     }
                     WM_MOUSEWHEEL => {
                         let wheel_delta = ((message.word_parameter >> 16) as u16 as i16) as f32;
-                        camera.zoom(wheel_delta / 120.0 * 0.7);
+                        camera.zoom_proportional(wheel_delta / 120.0 * ZOOM_STEP);
                         needs_render = true;
                     }
                     _ => {}
@@ -428,12 +436,12 @@ mod platform {
 
     fn handle_key(key: usize, camera: &mut Camera, scene: &Scene) -> io::Result<bool> {
         match key {
-            VK_LEFT | 0x41 => camera.orbit(-0.12, 0.0),
-            VK_RIGHT | 0x44 => camera.orbit(0.12, 0.0),
-            VK_UP | 0x57 => camera.orbit(0.0, 0.10),
-            VK_DOWN | 0x53 => camera.orbit(0.0, -0.10),
-            VK_ADD | VK_OEM_PLUS => camera.zoom(0.7),
-            VK_SUBTRACT | VK_OEM_MINUS => camera.zoom(-0.7),
+            VK_LEFT | 0x41 => camera.orbit(-KEYBOARD_ORBIT_STEP, 0.0),
+            VK_RIGHT | 0x44 => camera.orbit(KEYBOARD_ORBIT_STEP, 0.0),
+            VK_UP | 0x57 => camera.orbit(0.0, KEYBOARD_ORBIT_STEP),
+            VK_DOWN | 0x53 => camera.orbit(0.0, -KEYBOARD_ORBIT_STEP),
+            VK_ADD | VK_OEM_PLUS => camera.zoom_proportional(ZOOM_STEP),
+            VK_SUBTRACT | VK_OEM_MINUS => camera.zoom_proportional(-ZOOM_STEP),
             0x52 => *camera = initial_camera(),
             0x50 => {
                 save_view(scene, camera)?;
