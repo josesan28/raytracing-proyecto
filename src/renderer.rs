@@ -1,5 +1,5 @@
 use crate::camera::Camera;
-use crate::color::{Color, LinearColor};
+use crate::color::LinearColor;
 use crate::framebuffer::Framebuffer;
 use crate::material::{Intersect, RAY_EPSILON};
 use crate::math::Vec3;
@@ -11,14 +11,31 @@ const MIN_RAY_CONTRIBUTION: f32 = 1.0 / 4096.0;
 const SUN_DIRECTION: Vec3 = Vec3::new(-0.363, -0.038, -0.931);
 
 #[derive(Clone, Copy)]
-struct RenderOptions {
-    max_depth: u32,
-    shadows: bool,
+pub struct RenderOptions {
+    pub(crate) max_depth: u32,
+    pub shadows: bool,
+    pub reflections: bool,
+    pub refractions: bool,
+    pub normal_maps: bool,
+    pub antialias: bool,
 }
 
-const FINAL_OPTIONS: RenderOptions = RenderOptions {
+pub const FINAL_OPTIONS: RenderOptions = RenderOptions {
     max_depth: MAX_DEPTH,
     shadows: true,
+    reflections: true,
+    refractions: true,
+    normal_maps: true,
+    antialias: true,
+};
+
+pub const ECONOMY_OPTIONS: RenderOptions = RenderOptions {
+    shadows: false,
+    reflections: false,
+    refractions: false,
+    normal_maps: false,
+    antialias: false,
+    ..FINAL_OPTIONS
 };
 
 fn closest_intersection(
@@ -53,7 +70,7 @@ fn texture_color(intersection: &Intersect, scene: &Scene) -> LinearColor {
 
     material
         .texture_id
-        .map(|texture_id| scene.textures[texture_id].sample_nearest(scaled_uv))
+        .map(|texture_id| scene.textures[texture_id].sample_bilinear(scaled_uv))
         .unwrap_or(LinearColor::new(1.0, 1.0, 1.0))
 }
 
@@ -66,7 +83,7 @@ fn shading_normal(intersection: &Intersect, scene: &Scene) -> Vec3 {
         intersection.uv.u * material.texture_scale.u,
         intersection.uv.v * material.texture_scale.v,
     );
-    let sample = scene.textures[normal_map_id].sample_nearest(scaled_uv);
+    let sample = scene.textures[normal_map_id].sample_bilinear(scaled_uv);
     let tangent_normal = Vec3::new(sample.r, sample.g, sample.b);
 
     (intersection.tangent * tangent_normal.x
@@ -151,11 +168,23 @@ fn trace_ray_linear(
         return sky_color(*ray_direction, scene);
     }
 
-    let surface_normal = shading_normal(&intersection, scene);
+    let surface_normal = if options.normal_maps {
+        shading_normal(&intersection, scene)
+    } else {
+        intersection.normal
+    };
     let local_color = shade(&intersection, ray_direction, scene, options, surface_normal);
     let material = &scene.materials[intersection.material_id];
-    let reflectivity = material.reflectivity.clamp(0.0, 1.0);
-    let transparency = material.transparency.clamp(0.0, 1.0 - reflectivity);
+    let reflectivity = if options.reflections {
+        material.reflectivity.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let transparency = if options.refractions {
+        material.transparency.clamp(0.0, 1.0 - reflectivity)
+    } else {
+        0.0
+    };
 
     if (reflectivity <= 0.0 && transparency <= 0.0) || depth >= options.max_depth {
         return local_color;
@@ -164,10 +193,14 @@ fn trace_ray_linear(
     let cosine = (*ray_direction * -1.0).dot(surface_normal).clamp(0.0, 1.0);
     let refractive_index = material.refractive_index.max(f32::EPSILON);
     let base_fresnel = ((1.0 - refractive_index) / (1.0 + refractive_index)).powi(2);
-    let fresnel = base_fresnel + (1.0 - base_fresnel) * (1.0 - cosine).powi(5);
+    let fresnel = if options.reflections {
+        base_fresnel + (1.0 - base_fresnel) * (1.0 - cosine).powi(5)
+    } else {
+        0.0
+    };
     let mut reflected_weight = reflectivity + transparency * fresnel;
     let mut refracted_weight = transparency * (1.0 - fresnel);
-    let local_weight = 1.0 - reflectivity - transparency;
+    let mut local_weight = 1.0 - reflectivity - transparency;
 
     let index_ratio = if intersection.front_face {
         1.0 / refractive_index
@@ -177,7 +210,12 @@ fn trace_ray_linear(
     let refracted_direction = ray_direction.refract(surface_normal, index_ratio);
 
     if refracted_direction.is_none() {
-        reflected_weight += refracted_weight;
+        if options.reflections {
+            reflected_weight += refracted_weight;
+        } else {
+            // Sin reflexión, usa sombreado local ante reflexión interna total.
+            local_weight += refracted_weight;
+        }
         refracted_weight = 0.0;
     }
 
@@ -225,29 +263,47 @@ fn trace_ray_linear(
     result
 }
 
-fn trace_ray(
-    ray_origin: &Vec3,
-    ray_direction: &Vec3,
-    scene: &Scene,
-    options: RenderOptions,
-) -> Color {
-    trace_ray_linear(ray_origin, ray_direction, scene, 0, options, 1.0).to_color()
-}
-
 pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
-    render_with_options(framebuffer, camera, scene, FINAL_OPTIONS);
+    render_with_options(
+        framebuffer,
+        camera,
+        scene,
+        RenderOptions {
+            antialias: false,
+            ..FINAL_OPTIONS
+        },
+        &|| false,
+    );
 }
 
-fn render_with_options(
+pub fn render_refined(framebuffer: &mut Framebuffer, camera: &Camera, scene: &Scene) {
+    render_with_options(framebuffer, camera, scene, FINAL_OPTIONS, &|| false);
+}
+
+// La cancelación se comprueba entre tareas; nunca se publica un cuadro parcial.
+pub fn render_with_options(
     framebuffer: &mut Framebuffer,
     camera: &Camera,
     scene: &Scene,
     options: RenderOptions,
-) {
+    cancelled: &(dyn Fn() -> bool + Sync),
+) -> bool {
     framebuffer.clear();
+    render_rows(framebuffer, camera, scene, options, cancelled)
+}
 
+fn render_rows(
+    framebuffer: &mut Framebuffer,
+    camera: &Camera,
+    scene: &Scene,
+    options: RenderOptions,
+    cancelled: &(dyn Fn() -> bool + Sync),
+) -> bool {
     let width = framebuffer.width;
     let height = framebuffer.height;
+    if height == 0 || width == 0 {
+        return true;
+    }
     let ray_origin = camera.origin();
     let perspective_scale = camera.perspective_scale();
     let aspect_ratio = width as f32 / height as f32;
@@ -257,12 +313,23 @@ fn render_with_options(
     let screen_y: Vec<f32> = (0..height)
         .map(|y| (1.0 - (2.0 * (y as f32 + 0.5)) / height as f32) * perspective_scale)
         .collect();
+    // Cuatro subpíxeles dentro del píxel; no se desenfoca la imagen terminada.
+    let offset_x = camera.right * (0.5 / width as f32 * aspect_ratio * perspective_scale);
+    let offset_y = camera.up * (0.5 / height as f32 * perspective_scale);
+    let offsets = [
+        offset_x + offset_y,
+        offset_x - offset_y,
+        offset_y - offset_x,
+        (offset_x + offset_y) * -1.0,
+    ];
+    let rows_per_task = if options.antialias { 1 } else { 4 };
     let worker_count = std::thread::available_parallelism()
         .map(usize::from)
         .unwrap_or(1)
-        .min(height);
+        .saturating_sub(1)
+        .max(1)
+        .min(height.div_ceil(rows_per_task));
     // Franjas pequeñas equilibran cielo barato y geometría con rayos secundarios.
-    let rows_per_task = 4;
     let pixels_per_task = rows_per_task * width;
     let tasks = std::sync::Mutex::new(
         framebuffer
@@ -278,6 +345,9 @@ fn render_with_options(
             let tasks = &tasks;
             scope.spawn(move || {
                 loop {
+                    if cancelled() {
+                        break;
+                    }
                     // El bloqueo solo reparte franjas; el trazado usa píxeles exclusivos.
                     let task = tasks.lock().expect("Cola de render disponible").next();
                     let Some((task, pixels)) = task else { break };
@@ -285,15 +355,38 @@ fn render_with_options(
                     for (local_y, row) in pixels.chunks_mut(width).enumerate() {
                         let y = start_y + local_y;
                         for (x, pixel) in row.iter_mut().enumerate() {
-                            let ray_direction = (camera.right * screen_x[x]
+                            let direction = camera.right * screen_x[x]
                                 + camera.up * screen_y[y]
-                                + camera.forward)
-                                .normalize();
-                            *pixel = trace_ray(&ray_origin, &ray_direction, scene, options);
+                                + camera.forward;
+                            let color = if options.antialias {
+                                let mut sum = LinearColor::default();
+                                for offset in offsets {
+                                    sum = sum.add(trace_ray_linear(
+                                        &ray_origin,
+                                        &(direction + offset).normalize(),
+                                        scene,
+                                        0,
+                                        options,
+                                        1.0,
+                                    ));
+                                }
+                                sum.scale(0.25)
+                            } else {
+                                trace_ray_linear(
+                                    &ray_origin,
+                                    &direction.normalize(),
+                                    scene,
+                                    0,
+                                    options,
+                                    1.0,
+                                )
+                            };
+                            *pixel = color.to_color();
                         }
                     }
                 }
             });
         }
     });
+    !cancelled()
 }

@@ -14,6 +14,8 @@ mod scene;
 mod sphere;
 mod texture;
 mod window;
+#[cfg(target_os = "windows")]
+mod window_renderer;
 
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -23,7 +25,7 @@ use color::Color;
 use framebuffer::Framebuffer;
 use math::Vec3;
 use output::{write_bmp, write_png, write_ppm};
-use renderer::render;
+use renderer::{render, render_refined};
 use scene::{Scene, temple_scene};
 
 const FINAL_RENDER_WIDTH: usize = 1600;
@@ -142,7 +144,7 @@ fn save_interactive_view(scene: &Scene, camera: &Camera) -> std::io::Result<()> 
         FINAL_RENDER_HEIGHT,
         Color::new(8, 10, 18),
     );
-    render(&mut framebuffer, camera, scene);
+    render_refined(&mut framebuffer, camera, scene);
     write_png("interactive_view.png", &framebuffer)?;
     Ok(())
 }
@@ -164,7 +166,7 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
     );
 
     let render_start = Instant::now();
-    render(&mut framebuffer, &camera, scene);
+    render_refined(&mut framebuffer, &camera, scene);
     let render_time = render_start.elapsed();
     write_ppm("temple_cubes.ppm", &framebuffer)?;
     write_bmp("temple_cubes.bmp", &framebuffer)?;
@@ -181,23 +183,25 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
 fn render_animation(scene: &Scene) -> std::io::Result<()> {
     use std::f32::consts::{PI, TAU};
 
-    const FRAME_COUNT: usize = 24;
+    const FRAME_COUNT: usize = 192;
     const OUTPUT_DIRECTORY: &str = "renders/animation";
 
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
-    let mut framebuffer = Framebuffer::new(400, 225, Color::new(8, 10, 18));
+    let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
 
     for frame in 0..FRAME_COUNT {
         let progress = frame as f32 / (FRAME_COUNT - 1) as f32;
+        let eased_progress = progress * progress * (3.0 - 2.0 * progress);
         let mut camera = Camera::new(
             Vec3::new(0.0, 8.4, 16.0),
             Vec3::new(0.0, 1.5, -9.5),
             Vec3::new(0.0, 1.0, 0.0),
             PI / 3.5,
         );
-        let yaw = -0.72 + 1.44 * progress;
-        let pitch = 0.08 * (TAU * progress).sin();
-        let zoom = 2.6 * (PI * progress).sin();
+        let yaw = -0.78 + 1.56 * eased_progress;
+        let pitch = 0.10 * (TAU * progress).sin();
+        let zoom_curve = (PI * progress).sin();
+        let zoom = 3.4 * zoom_curve * zoom_curve;
 
         camera.orbit(yaw, pitch);
         camera.zoom(zoom);
@@ -205,7 +209,9 @@ fn render_animation(scene: &Scene) -> std::io::Result<()> {
 
         let output_path = format!("{OUTPUT_DIRECTORY}/frame_{frame:03}.png");
         write_png(&output_path, &framebuffer)?;
-        println!("Cuadro {}/{FRAME_COUNT}: {output_path}", frame + 1);
+        if frame % 12 == 0 || frame + 1 == FRAME_COUNT {
+            println!("Cuadro {}/{FRAME_COUNT}: {output_path}", frame + 1);
+        }
     }
 
     println!("Secuencia terminada en {OUTPUT_DIRECTORY}");

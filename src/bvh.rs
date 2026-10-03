@@ -1,4 +1,4 @@
-use crate::bounding_box::Aabb;
+use crate::bounding_box::{Aabb, BoundsRay};
 use crate::material::{Intersect, Material, RayIntersect};
 use crate::math::Vec3;
 
@@ -10,6 +10,7 @@ struct Node {
     right: usize,
     start: usize,
     count: usize,
+    split_axis: usize,
 }
 
 pub struct Bvh {
@@ -42,6 +43,7 @@ impl Bvh {
         }
 
         let mut closest = Intersect::empty();
+        let bounds_ray = BoundsRay::new(origin, direction);
         let mut closest_distance = max_distance;
         let mut closest_index = usize::MAX;
         let mut stack = [0_usize; 64];
@@ -51,7 +53,7 @@ impl Bvh {
             stack_size -= 1;
             let node_index = stack[stack_size];
             let node = &self.nodes[node_index];
-            if !node.bounds.is_hit(origin, direction, closest_distance) {
+            if !node.bounds.is_hit_cached(&bounds_ray, closest_distance) {
                 continue;
             }
 
@@ -67,9 +69,16 @@ impl Bvh {
                     }
                 }
             } else {
-                stack[stack_size] = node.left;
+                // Visita primero el lado hacia el que entra el rayo para acortar
+                // pronto la distancia máxima, conservando el desempate por índice.
+                let (first, second) = if component(*direction, node.split_axis) >= 0.0 {
+                    (node.left, node.right)
+                } else {
+                    (node.right, node.left)
+                };
+                stack[stack_size] = second;
                 stack_size += 1;
-                stack[stack_size] = node.right;
+                stack[stack_size] = first;
                 stack_size += 1;
             }
         }
@@ -89,13 +98,14 @@ impl Bvh {
             return false;
         }
 
+        let bounds_ray = BoundsRay::new(origin, direction);
         let mut stack = [0_usize; 64];
         let mut stack_size = 1;
 
         while stack_size > 0 {
             stack_size -= 1;
             let node = &self.nodes[stack[stack_size]];
-            if !node.bounds.is_hit(origin, direction, max_distance) {
+            if !node.bounds.is_hit_cached(&bounds_ray, max_distance) {
                 continue;
             }
 
@@ -109,9 +119,14 @@ impl Bvh {
                     }
                 }
             } else {
-                stack[stack_size] = node.left;
+                let (first, second) = if component(*direction, node.split_axis) >= 0.0 {
+                    (node.left, node.right)
+                } else {
+                    (node.right, node.left)
+                };
+                stack[stack_size] = second;
                 stack_size += 1;
-                stack[stack_size] = node.right;
+                stack[stack_size] = first;
                 stack_size += 1;
             }
         }
@@ -138,6 +153,7 @@ fn build_node(
         right: 0,
         start,
         count: indices.len(),
+        split_axis: 0,
     });
 
     if indices.len() <= LEAF_SIZE {
@@ -165,6 +181,7 @@ fn build_node(
     nodes[node_index].left = left;
     nodes[node_index].right = right;
     nodes[node_index].count = 0;
+    nodes[node_index].split_axis = axis;
     node_index
 }
 

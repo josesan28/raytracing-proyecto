@@ -4,14 +4,16 @@ mod platform {
     use std::io;
     use std::mem::size_of;
     use std::ptr::{null, null_mut};
+    use std::time::{Duration, Instant};
 
     use crate::camera::Camera;
     use crate::color::Color;
     use crate::framebuffer::Framebuffer;
     use crate::math::Vec3;
     use crate::output::write_png;
-    use crate::renderer::render;
+    use crate::renderer::{ECONOMY_OPTIONS, RenderOptions, render_refined};
     use crate::scene::Scene;
+    use crate::window_renderer::{RenderMode, RenderRequest, WindowRenderer};
 
     type Handle = *mut c_void;
     type WindowHandle = Handle;
@@ -20,8 +22,7 @@ mod platform {
 
     const WINDOW_WIDTH: usize = 1280;
     const WINDOW_HEIGHT: usize = 720;
-    const RENDER_WIDTH: usize = 800;
-    const RENDER_HEIGHT: usize = 450;
+    const REFINE_DELAY: Duration = Duration::from_millis(200);
     const SAVED_RENDER_WIDTH: usize = 1600;
     const SAVED_RENDER_HEIGHT: usize = 900;
     const MOUSE_ORBIT_SENSITIVITY: f32 = 0.0035;
@@ -38,6 +39,7 @@ mod platform {
     const WM_LBUTTONDOWN: u32 = 0x0201;
     const WM_LBUTTONUP: u32 = 0x0202;
     const WM_MOUSEWHEEL: u32 = 0x020A;
+    const WM_CAPTURECHANGED: u32 = 0x0215;
 
     const VK_ESCAPE: usize = 0x1B;
     const VK_LEFT: usize = 0x25;
@@ -165,6 +167,7 @@ mod platform {
     #[link(name = "user32")]
     unsafe extern "system" {
         fn SetProcessDPIAware() -> i32;
+        fn SetWindowTextW(window: WindowHandle, text: *const u16) -> i32;
         fn RegisterClassW(window_class: *const WindowClass) -> u16;
         fn AdjustWindowRect(rectangle: *mut Rectangle, style: u32, has_menu: i32) -> i32;
         fn CreateWindowExW(
@@ -210,6 +213,13 @@ mod platform {
         fn SetCapture(window: WindowHandle) -> WindowHandle;
         fn ReleaseCapture() -> i32;
         fn WaitMessage() -> i32;
+        fn MsgWaitForMultipleObjects(
+            count: u32,
+            handles: *const Handle,
+            wait_all: i32,
+            milliseconds: u32,
+            wake_mask: u32,
+        ) -> u32;
     }
 
     #[link(name = "gdi32")]
@@ -330,10 +340,40 @@ mod platform {
             UpdateWindow(window);
         }
 
+        let renderer = WindowRenderer::default();
+        std::thread::scope(|scope| {
+            scope.spawn(|| renderer.run(scene));
+            let result = event_loop(window, scene, &renderer);
+            // También despierta y termina el trabajador si la ventana devuelve un error.
+            renderer.stop();
+            result
+        })
+    }
+
+    fn event_loop(
+        window: WindowHandle,
+        scene: &Scene,
+        renderer: &WindowRenderer,
+    ) -> io::Result<()> {
         let mut camera = initial_camera();
-        let background = Color::new(8, 10, 18);
-        let mut framebuffer = Framebuffer::new(RENDER_WIDTH, RENDER_HEIGHT, background);
-        let mut display_pixels = vec![0_u32; RENDER_WIDTH * RENDER_HEIGHT];
+        let mut mode = RenderMode::Adaptive;
+        let mut economy = ECONOMY_OPTIONS;
+        let mut generation = 0_u64;
+        let mut needs_refine = false;
+        let mut last_input = Instant::now();
+        show_mode(window, mode, economy);
+        println!("F1: adaptativo | F2: calidad constante | F3: económico");
+        println!(
+            "En económico: F4 sombras, F5 reflejos, F6 refracción, F7 mapas normales, F8 antialiasing."
+        );
+        println!(
+            "Arrastra o WASD: rotar | Rueda o +/-: zoom | R: reiniciar cámara | P: guardar PNG con calidad máxima."
+        );
+        let mut display_pixels = vec![0_u32; WINDOW_WIDTH * WINDOW_HEIGHT];
+        let mut display_size = (WINDOW_WIDTH, WINDOW_HEIGHT);
+        let mut requested_size = (WINDOW_WIDTH, WINDOW_HEIGHT);
+        let mut requested_version = 0_u64;
+        let mut render_pending = false;
         let mut needs_render = true;
         let mut needs_present = true;
         let mut running = true;
@@ -349,9 +389,19 @@ mod platform {
                 }
 
                 match message.message {
-                    WM_SIZE | WM_PAINT => needs_present = true,
+                    WM_SIZE => needs_render = true,
+                    WM_PAINT => needs_present = true,
                     WM_KEYDOWN => {
-                        if handle_key(message.word_parameter, &mut camera, scene)? {
+                        // El bit 30 distingue repetición automática: cada pulsación
+                        // cambia una opción una sola vez aunque se mantenga la tecla.
+                        let repeated = message.long_parameter & (1 << 30) != 0;
+                        if !repeated
+                            && handle_mode_key(message.word_parameter, &mut mode, &mut economy)
+                        {
+                            generation += 1;
+                            needs_render = true;
+                            show_mode(window, mode, economy);
+                        } else if handle_key(message.word_parameter, &mut camera, scene)? {
                             needs_render = true;
                         }
                         if message.word_parameter == VK_ESCAPE {
@@ -367,6 +417,7 @@ mod platform {
                         dragging = false;
                         unsafe { ReleaseCapture() };
                     }
+                    WM_CAPTURECHANGED => dragging = false,
                     WM_MOUSEMOVE if dragging => {
                         let current_mouse = mouse_position(message.long_parameter);
                         let delta_x = current_mouse.0 - previous_mouse.0;
@@ -398,25 +449,83 @@ mod platform {
                 break;
             }
 
+            let mut client = Rectangle::default();
+            if unsafe { GetClientRect(window, &mut client) } == 0 {
+                return Err(io::Error::last_os_error());
+            }
+            let width = (client.right - client.left).max(0) as usize;
+            let height = (client.bottom - client.top).max(0) as usize;
+            // Una ventana minimizada no solicita nuevos cuadros.
+            if width == 0 || height == 0 {
+                unsafe { WaitMessage() };
+                continue;
+            }
+            if (width, height) != requested_size {
+                needs_render = true;
+            }
+
             if needs_render {
-                render(&mut framebuffer, &camera, scene);
-                convert_pixels(&framebuffer, &mut display_pixels);
+                requested_version += 1;
+                requested_size = (width, height);
+                last_input = Instant::now();
+                needs_refine = mode == RenderMode::Adaptive;
+                renderer.request(RenderRequest {
+                    version: requested_version,
+                    generation,
+                    camera,
+                    viewport: requested_size,
+                    mode,
+                    refined: false,
+                    economy,
+                });
+                render_pending = true;
                 needs_render = false;
-                needs_present = true;
+            }
+            if let Some(completed) = renderer.take_completed() {
+                if completed.generation == generation {
+                    render_pending = completed.version < requested_version;
+                }
+                let framebuffer = completed.framebuffer;
+                if completed.generation == generation && completed.viewport == requested_size {
+                    display_pixels.resize(framebuffer.width * framebuffer.height, 0);
+                    for (destination, source) in display_pixels.iter_mut().zip(framebuffer.pixels())
+                    {
+                        *destination = display_color(*source);
+                    }
+                    display_size = (framebuffer.width, framebuffer.height);
+                    needs_present = true;
+                }
+            }
+            if needs_refine && !render_pending && last_input.elapsed() >= REFINE_DELAY {
+                requested_version += 1;
+                renderer.request(RenderRequest {
+                    version: requested_version,
+                    generation,
+                    camera,
+                    viewport: requested_size,
+                    mode,
+                    refined: true,
+                    economy,
+                });
+                needs_refine = false;
+                render_pending = true;
             }
 
             if needs_present {
-                draw_frame(
-                    window,
-                    &display_pixels,
-                    framebuffer.width,
-                    framebuffer.height,
-                )?;
+                draw_frame(window, &display_pixels, display_size.0, display_size.1)?;
                 needs_present = false;
             }
 
             if !needs_render && !needs_present {
-                unsafe { WaitMessage() };
+                if render_pending || needs_refine {
+                    // Atiende entrada inmediatamente y recoge cuadros completos sin
+                    // bloquear la ventana durante el trazado ni hacer espera activa.
+                    unsafe {
+                        MsgWaitForMultipleObjects(0, null(), 0, 10, 0x04FF);
+                    }
+                } else {
+                    unsafe { WaitMessage() };
+                }
             }
         }
 
@@ -432,6 +541,59 @@ mod platform {
             Vec3::new(0.0, 1.0, 0.0),
             PI / 3.5,
         )
+    }
+
+    fn handle_mode_key(key: usize, mode: &mut RenderMode, economy: &mut RenderOptions) -> bool {
+        let selected = match key {
+            0x70 => Some(RenderMode::Adaptive), // F1
+            0x71 => Some(RenderMode::Quality),  // F2
+            0x72 => Some(RenderMode::Economy),  // F3
+            _ => None,
+        };
+        if let Some(selected) = selected {
+            if *mode == selected {
+                return false;
+            }
+            *mode = selected;
+            return true;
+        }
+        if *mode != RenderMode::Economy {
+            return false;
+        }
+        let setting = match key {
+            0x73 => &mut economy.shadows,
+            0x74 => &mut economy.reflections,
+            0x75 => &mut economy.refractions,
+            0x76 => &mut economy.normal_maps,
+            0x77 => &mut economy.antialias,
+            _ => return false,
+        };
+        *setting = !*setting;
+        true
+    }
+
+    fn show_mode(window: WindowHandle, mode: RenderMode, economy: RenderOptions) {
+        let mut title = format!(
+            "Templo — {} | F1 Adaptativo | F2 Calidad | F3 Económico",
+            mode.name()
+        );
+        if mode == RenderMode::Economy {
+            let state = |enabled| if enabled { "sí" } else { "no" };
+            title.push_str(&format!(
+                " | F4 Sombras:{} F5 Reflejos:{} F6 Refracción:{} F7 Relieve:{} F8 AA:{}",
+                state(economy.shadows),
+                state(economy.reflections),
+                state(economy.refractions),
+                state(economy.normal_maps),
+                state(economy.antialias),
+            ));
+        } else {
+            title.push_str(" | Arrastra: rotar | Rueda: zoom | P: guardar");
+        }
+        println!("{title}");
+        unsafe {
+            SetWindowTextW(window, wide_string(&title).as_ptr());
+        }
     }
 
     fn handle_key(key: usize, camera: &mut Camera, scene: &Scene) -> io::Result<bool> {
@@ -459,15 +621,12 @@ mod platform {
             SAVED_RENDER_HEIGHT,
             Color::new(8, 10, 18),
         );
-        render(&mut framebuffer, camera, scene);
+        render_refined(&mut framebuffer, camera, scene);
         write_png("window_view.png", &framebuffer)
     }
 
-    fn convert_pixels(framebuffer: &Framebuffer, output: &mut [u32]) {
-        for (destination, source) in output.iter_mut().zip(framebuffer.pixels()) {
-            *destination =
-                (u32::from(source.r) << 16) | (u32::from(source.g) << 8) | u32::from(source.b);
-        }
+    fn display_color(color: Color) -> u32 {
+        (u32::from(color.r) << 16) | (u32::from(color.g) << 8) | u32::from(color.b)
     }
 
     fn draw_frame(

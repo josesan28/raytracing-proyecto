@@ -129,15 +129,32 @@ impl Texture {
         })
     }
 
-    pub fn sample_nearest(&self, uv: Vec2) -> LinearColor {
-        let u = uv.u.rem_euclid(1.0);
-        let v = uv.v.rem_euclid(1.0);
-        let x = (u * self.width as f32).floor() as usize;
-        let y = ((1.0 - v) * self.height as f32).floor() as usize;
-        let x = x.min(self.width - 1);
-        let y = y.min(self.height - 1);
-
-        self.pixels[y * self.width + x]
+    // Interpola texeles vecinos, con continuidad en las texturas repetidas.
+    // También admite los vectores firmados de los mapas normales preparados.
+    pub fn sample_bilinear(&self, uv: Vec2) -> LinearColor {
+        let x = uv.u.rem_euclid(1.0) * self.width as f32 - 0.5;
+        let y = (1.0 - uv.v.rem_euclid(1.0)) * self.height as f32 - 0.5;
+        let floor_x = x.floor();
+        let floor_y = y.floor();
+        // Las UV ya están envueltas: el único índice negativo posible es -1.
+        // Evita cuatro divisiones enteras por muestra sin cambiar los texeles.
+        let x0 = if floor_x < 0.0 {
+            self.width - 1
+        } else {
+            floor_x as usize
+        };
+        let y0 = if floor_y < 0.0 {
+            self.height - 1
+        } else {
+            floor_y as usize
+        };
+        let x1 = if x0 + 1 == self.width { 0 } else { x0 + 1 };
+        let y1 = if y0 + 1 == self.height { 0 } else { y0 + 1 };
+        let top =
+            self.pixels[y0 * self.width + x0].lerp(self.pixels[y0 * self.width + x1], x - floor_x);
+        let bottom =
+            self.pixels[y1 * self.width + x0].lerp(self.pixels[y1 * self.width + x1], x - floor_x);
+        top.lerp(bottom, y - floor_y)
     }
 
     pub fn sample_equirectangular(&self, direction: Vec3) -> LinearColor {
