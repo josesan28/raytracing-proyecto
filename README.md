@@ -1,6 +1,6 @@
 # Ruinas de Zaculeu - Raytracing en Rust
 
-Este proyecto presenta un diorama inspirado en las **ruinas de Zaculeu, Guatemala**. La escena está construida con cubos texturizados e incluye una plaza, una fuente, gradas, muros, vegetación, antorchas y un altar.
+Este proyecto es un diorama inspirado en las **ruinas de Zaculeu, Huehuetenango, Guatemala**. La escena está construida con cubos texturizados e incluye una plaza, una fuente, gradas, muros, vegetación, antorchas y un altar.
 
 Todo el render se calcula en CPU. El proyecto no usa la tarjeta de video ni librerías externas de Rust.
 
@@ -8,7 +8,8 @@ Todo el render se calcula en CPU. El proyecto no usa la tarjeta de video ni libr
 
 ## Video
 
-C:\Users\José Sanchez\Desktop\Sexto-Semestre\Graficas\raytracing-proyecto\renders\diorama_hq.mp4
+[Video del diorama](https://github.com/user-attachments/assets/10ae397c-23c2-4e50-aeeb-6d77b6578c1a
+)
 
 ## Requisitos cumplidos
 
@@ -41,14 +42,6 @@ La ventana abre en el modo adaptativo. Para generar una imagen final:
 ```bash
 cargo run --release -- --render
 ```
-
-Para generar los 360 cuadros del video:
-
-```bash
-cargo run --release -- --animation
-```
-
-Los cuadros se guardan en `renders/animation_hq/`. El video incluido en el repositorio fue ensamblado de forma externa; esa conversión no forma parte del código entregado.
 
 ## Controles
 
@@ -110,7 +103,7 @@ Otros materiales visibles:
 | Hojas | <img src="docs/images/textures/hojas_arbol.png" width="100" alt="Textura de hojas"> | Copas y vegetación. |
 | Llama | <img src="docs/images/textures/llama_lava.png" width="100" alt="Textura de llama"> | Antorchas emisivas. |
 
-El programa carga únicamente los archivos PPM que se encuentran en `assets/textures/`. Los PNG originales usados durante la preparación de las texturas no son necesarios para compilar o ejecutar la entrega.
+El programa carga los archivos PPM que se encuentran en `assets/textures/`.
 
 ### Créditos de las texturas
 
