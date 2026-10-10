@@ -8,11 +8,7 @@ Todo el render se calcula en CPU. El proyecto no usa la tarjeta de video ni libr
 
 ## Video
 
-[![Ver el recorrido por el diorama](docs/images/santuario.png)](renders/diorama_hq.mp4)
-
-**[Ver o descargar el video](renders/diorama_hq.mp4)**
-
-El video dura 12 segundos, tiene una resolución de 1920×1080 y se reproduce a 30 cuadros por segundo. Muestra la rotación de la cámara, acercamientos y alejamientos alrededor de la escena.
+**C:\Users\José Sanchez\Desktop\Sexto-Semestre\Graficas\raytracing-proyecto\renders\diorama_hq.mp4
 
 ## Requisitos cumplidos
 
