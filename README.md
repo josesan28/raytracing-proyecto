@@ -8,7 +8,7 @@ Todo el render se calcula en CPU. El proyecto no usa la tarjeta de video ni libr
 
 ## Video
 
-**C:\Users\José Sanchez\Desktop\Sexto-Semestre\Graficas\raytracing-proyecto\renders\diorama_hq.mp4
+C:\Users\José Sanchez\Desktop\Sexto-Semestre\Graficas\raytracing-proyecto\renders\diorama_hq.mp4
 
 ## Requisitos cumplidos
 
