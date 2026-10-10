@@ -39,8 +39,13 @@ fn main() -> std::io::Result<()> {
         render_main_view(&scene)
     } else if arguments.iter().any(|argument| argument == "--interactive") {
         run_interactive(&scene)
+    } else if arguments
+        .iter()
+        .any(|argument| argument == "--animation-preview")
+    {
+        render_animation(&scene, true)
     } else if arguments.iter().any(|argument| argument == "--animation") {
-        render_animation(&scene)
+        render_animation(&scene, false)
     } else {
         window::run(&scene)
     }
@@ -180,16 +185,23 @@ fn render_main_view(scene: &Scene) -> std::io::Result<()> {
     Ok(())
 }
 
-fn render_animation(scene: &Scene) -> std::io::Result<()> {
+fn render_animation(scene: &Scene, preview: bool) -> std::io::Result<()> {
     use std::f32::consts::{PI, TAU};
+    use std::time::Instant;
 
-    const FRAME_COUNT: usize = 192;
-    const OUTPUT_DIRECTORY: &str = "renders/animation";
+    const FPS: usize = 30;
+    const FRAME_COUNT: usize = FPS * 12;
+    const OUTPUT_DIRECTORY: &str = "renders/animation_hq";
 
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
-    let mut framebuffer = Framebuffer::new(800, 450, Color::new(8, 10, 18));
+    let mut framebuffer = Framebuffer::new(1920, 1080, Color::new(8, 10, 18));
+    let started = Instant::now();
+    println!("Animación: 1920x1080, {FPS} fps, 12 segundos, cuatro muestras por píxel.");
 
     for frame in 0..FRAME_COUNT {
+        if preview && ![0, 90, 180, 270, FRAME_COUNT - 1].contains(&frame) {
+            continue;
+        }
         let progress = frame as f32 / (FRAME_COUNT - 1) as f32;
         let eased_progress = progress * progress * (3.0 - 2.0 * progress);
         let mut camera = Camera::new(
@@ -201,19 +213,30 @@ fn render_animation(scene: &Scene) -> std::io::Result<()> {
         let yaw = -0.78 + 1.56 * eased_progress;
         let pitch = 0.10 * (TAU * progress).sin();
         let zoom_curve = (PI * progress).sin();
-        let zoom = 3.4 * zoom_curve * zoom_curve;
+        let zoom = 6.0 * zoom_curve * zoom_curve;
 
         camera.orbit(yaw, pitch);
         camera.zoom(zoom);
-        render(&mut framebuffer, &camera, scene);
+        // Misma calidad que una captura final, incluso durante órbita y zoom.
+        render_refined(&mut framebuffer, &camera, scene);
 
         let output_path = format!("{OUTPUT_DIRECTORY}/frame_{frame:03}.png");
         write_png(&output_path, &framebuffer)?;
-        if frame % 12 == 0 || frame + 1 == FRAME_COUNT {
-            println!("Cuadro {}/{FRAME_COUNT}: {output_path}", frame + 1);
+        if preview || frame % 10 == 0 || frame + 1 == FRAME_COUNT {
+            println!(
+                "Cuadro {}/{FRAME_COUNT}: {output_path} | Tiempo: {:.1?}",
+                frame + 1,
+                started.elapsed()
+            );
         }
     }
 
-    println!("Secuencia terminada en {OUTPUT_DIRECTORY}");
+    if preview {
+        println!(
+            "Cinco vistas de comprobación en {OUTPUT_DIRECTORY}; usa --animation para la secuencia completa."
+        );
+    } else {
+        println!("Secuencia terminada en {OUTPUT_DIRECTORY} ({FRAME_COUNT} cuadros a {FPS} fps)");
+    }
     Ok(())
 }

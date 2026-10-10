@@ -5,3 +5,12 @@ target/
 
 # Las texturas PPM son assets del proyecto, no resultados del render.
 !assets/textures/*.ppm
+
+# Evidencia visual que se muestra en el README.
+!docs/images/**/*.png
+# Imágenes auxiliares que ya no aparecen en el README.
+docs/images/textures/agua_normal.png
+docs/images/textures/emisivo.png
+docs/images/textures/oro_normal.png
+docs/images/textures/piedra_normal.png
+docs/benchmarks.csv

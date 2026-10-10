@@ -36,7 +36,6 @@ pub fn temple_scene() -> io::Result<Scene> {
         Texture::from_ppm("assets/textures/piedra_normal.ppm")?,
         Texture::from_ppm("assets/textures/agua.ppm")?,
         Texture::from_ppm("assets/textures/agua_normal.ppm")?,
-        Texture::from_ppm("assets/textures/emisivo.ppm")?,
         Texture::from_ppm("assets/textures/skybox_atardecer.ppm")?,
         Texture::from_ppm("assets/textures/oro_normal.ppm")?,
         Texture::from_ppm("assets/textures/suelo_selva.ppm")?,
@@ -62,7 +61,7 @@ pub fn temple_scene() -> io::Result<Scene> {
     let mut moss = Material::new(LinearColor::new(0.82, 0.94, 0.78));
     moss.texture_id = Some(1);
     moss.texture_scale = crate::math::Vec2::new(1.75, 1.75);
-    moss.normal_map_id = Some(18);
+    moss.normal_map_id = Some(17);
     moss.normal_map_strength = 0.45;
     moss.specular = 0.04;
     moss.shininess = 8.0;
@@ -70,14 +69,14 @@ pub fn temple_scene() -> io::Result<Scene> {
     let mut wood = Material::new(LinearColor::new(0.92, 0.82, 0.68));
     wood.texture_id = Some(2);
     wood.texture_scale = crate::math::Vec2::new(1.5, 1.5);
-    wood.normal_map_id = Some(19);
+    wood.normal_map_id = Some(18);
     wood.normal_map_strength = 0.55;
     wood.specular = 0.18;
     wood.shininess = 20.0;
 
     let mut gold = Material::new(LinearColor::new(1.0, 0.90, 0.55));
     gold.texture_id = Some(3);
-    gold.normal_map_id = Some(9);
+    gold.normal_map_id = Some(8);
     gold.normal_map_strength = 0.32;
     gold.specular = 0.85;
     gold.shininess = 96.0;
@@ -95,36 +94,35 @@ pub fn temple_scene() -> io::Result<Scene> {
     water.refractive_index = 1.33;
 
     let mut emissive = Material::new(LinearColor::new(1.0, 0.52, 0.12));
-    emissive.texture_id = Some(7);
     emissive.specular = 0.25;
     emissive.shininess = 32.0;
     emissive.emission = LinearColor::new(1.8, 0.72, 0.10);
 
     let mut ground = Material::new(LinearColor::new(0.76, 0.82, 0.72));
-    ground.texture_id = Some(10);
-    ground.normal_map_id = Some(11);
+    ground.texture_id = Some(9);
+    ground.normal_map_id = Some(10);
     ground.normal_map_strength = 0.38;
     ground.specular = 0.05;
     ground.shininess = 10.0;
 
     let mut bark = Material::new(LinearColor::new(0.78, 0.66, 0.50));
-    bark.texture_id = Some(13);
+    bark.texture_id = Some(12);
     bark.texture_scale = crate::math::Vec2::new(1.0, 2.0);
-    bark.normal_map_id = Some(12);
+    bark.normal_map_id = Some(11);
     bark.normal_map_strength = 0.58;
     bark.specular = 0.06;
     bark.shininess = 12.0;
 
     let mut leaves = Material::new(LinearColor::new(0.42, 0.68, 0.32));
-    leaves.texture_id = Some(14);
-    leaves.normal_map_id = Some(15);
+    leaves.texture_id = Some(13);
+    leaves.normal_map_id = Some(14);
     leaves.normal_map_strength = 0.35;
     leaves.specular = 0.03;
     leaves.shininess = 8.0;
 
     let mut flame = Material::new(LinearColor::new(1.0, 0.68, 0.32));
-    flame.texture_id = Some(16);
-    flame.normal_map_id = Some(17);
+    flame.texture_id = Some(15);
+    flame.normal_map_id = Some(16);
     flame.normal_map_strength = 0.20;
     flame.specular = 0.20;
     flame.shininess = 24.0;
@@ -135,7 +133,7 @@ pub fn temple_scene() -> io::Result<Scene> {
     ];
 
     // Solo albedo opaco: el cielo, el agua y la emisión conservan sus valores.
-    for texture_id in [0, 1, 2, 3, 10, 13, 14] {
+    for texture_id in [0, 1, 2, 3, 9, 12, 13] {
         textures[texture_id].enhance_detail(0.65);
     }
     // Cada material de esta escena posee su propio mapa normal. Si se comparte
@@ -496,7 +494,7 @@ pub fn temple_scene() -> io::Result<Scene> {
                 intensity: 18.0,
             },
         ],
-        skybox: Skybox { texture_id: 8 },
+        skybox: Skybox { texture_id: 7 },
         bvh,
     })
 }
